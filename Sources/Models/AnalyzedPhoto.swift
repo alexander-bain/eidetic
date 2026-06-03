@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import CoreLocation
 import AppKit
+import SwiftUI
 
 final class AnalyzedPhoto: ObservableObject, Identifiable {
     let id: String
@@ -12,6 +13,11 @@ final class AnalyzedPhoto: ObservableObject, Identifiable {
     let hue: CGFloat
     let saturation: CGFloat
     let brightness: CGFloat
+
+    // On-device Vision analysis (see PhotoProvider).
+    let isUtility: Bool          // screenshot / receipt / document — hidden from display
+    let aestheticsScore: Float   // Vision overall score, -1...1 (0 = unknown)
+    let saliencyRect: CGRect?    // subject region, normalized, Vision (bottom-left) origin
 
     // Display image is loaded on demand (see PhotoProvider.requestImage) so the
     // full library can be tracked without holding every decoded image in memory.
@@ -26,6 +32,9 @@ final class AnalyzedPhoto: ObservableObject, Identifiable {
         hue: CGFloat,
         saturation: CGFloat,
         brightness: CGFloat,
+        isUtility: Bool = false,
+        aestheticsScore: Float = 0,
+        saliencyRect: CGRect? = nil,
         image: NSImage? = nil
     ) {
         self.id = id
@@ -36,7 +45,19 @@ final class AnalyzedPhoto: ObservableObject, Identifiable {
         self.hue = hue
         self.saturation = saturation
         self.brightness = brightness
+        self.isUtility = isUtility
+        self.aestheticsScore = aestheticsScore
+        self.saliencyRect = saliencyRect
         self.image = image
+    }
+
+    /// The subject's location as a SwiftUI `UnitPoint` (top-left origin), for
+    /// focusing Ken Burns motion. Falls back to center when no subject is found.
+    var subjectAnchor: UnitPoint {
+        guard let rect = saliencyRect else { return .center }
+        let x = min(max(rect.midX, 0), 1)
+        let y = min(max(1 - rect.midY, 0), 1) // flip Vision's bottom-left origin
+        return UnitPoint(x: x, y: y)
     }
 
     var year: Int? {

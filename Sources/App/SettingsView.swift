@@ -16,8 +16,12 @@ struct SettingsView: View {
 
             Section("Behavior") {
                 Toggle("Keep display awake", isOn: $coordinator.stayAwake)
+            }
+
+            Section("Library") {
                 LabeledContent("Photos loaded", value: "\(photoProvider.photos.count)")
-                LabeledContent("Color-sortable", value: "\(photoProvider.photosSortedByHue().count)")
+                LabeledContent("Frame-worthy", value: "\(photoProvider.displayablePhotos.count)")
+                LabeledContent("Hidden (screenshots, docs)", value: "\(photoProvider.hiddenUtilityCount)")
                 LabeledContent("On this day", value: "\(photoProvider.photosForToday().count)")
             }
 
@@ -28,7 +32,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 380, height: 340)
+        .frame(width: 380, height: 440)
     }
 
     private func binding(for mode: DisplayModeType) -> Binding<Bool> {

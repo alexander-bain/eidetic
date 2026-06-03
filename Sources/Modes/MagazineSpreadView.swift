@@ -77,7 +77,9 @@ struct MagazineSpreadView: View {
         AsyncPhotoImage(photo: photo)
             .frame(width: size.width, height: size.height)
             .clipped()
-            .scaleEffect(kenBurnsScale)
+            // Zoom toward the detected subject (face/focal point) rather than
+            // drifting blindly, so the Ken Burns motion keeps it in frame.
+            .scaleEffect(kenBurnsScale, anchor: photo.subjectAnchor)
             .offset(kenBurnsOffset)
     }
 

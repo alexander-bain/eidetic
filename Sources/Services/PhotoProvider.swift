@@ -1,6 +1,7 @@
 import Photos
 import AppKit
 import CoreImage
+import Vision
 import Combine
 
 @MainActor
@@ -22,8 +23,8 @@ class PhotoProvider: ObservableObject {
     private var inFlight: Set<String> = []
     private let maxLoadedImages = 400
 
-    // Persisted color analysis (so re-launches don't re-analyze).
-    private var colorCache: [String: ColorRecord] = [:]
+    // Persisted on-device analysis (color + Vision) so re-launches are instant.
+    private var analysisCache: [String: PhotoAnalysis] = [:]
     private var cacheDirty = false
 
     private let firstBatchSize = 60
@@ -40,7 +41,7 @@ class PhotoProvider: ObservableObject {
         guard authorizationStatus == .authorized || authorizationStatus == .limited else { return }
 
         isLoading = true
-        loadColorCache()
+        loadAnalysisCache()
 
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
@@ -70,7 +71,7 @@ class PhotoProvider: ObservableObject {
         }
         photos = initial
         isLoading = false
-        saveColorCacheIfNeeded()
+        saveAnalysisCacheIfNeeded()
 
         // Remaining photos: analyze in the background, appending in chunks so the
         // library fills in progressively without blocking the UI.
@@ -87,30 +88,28 @@ class PhotoProvider: ObservableObject {
                 if buffer.count >= self.backgroundChunkSize {
                     self.photos.append(contentsOf: buffer)
                     buffer.removeAll(keepingCapacity: true)
-                    self.saveColorCacheIfNeeded()
+                    self.saveAnalysisCacheIfNeeded()
                 }
             }
             if !buffer.isEmpty { self.photos.append(contentsOf: buffer) }
-            self.saveColorCacheIfNeeded()
+            self.saveAnalysisCacheIfNeeded()
         }
     }
 
     private func makePhoto(asset: PHAsset) async -> AnalyzedPhoto {
         let id = asset.localIdentifier
-        let color: NSColor
-        let h: CGFloat, s: CGFloat, b: CGFloat
+        // Screenshots are flagged by PhotoKit directly — free, no analysis needed.
+        let isScreenshot = asset.mediaSubtypes.contains(.photoScreenshot)
 
-        if let record = colorCache[id] {
-            color = record.color
-            h = record.hue
-            s = record.saturation
-            b = record.brightness
-        } else if let analyzed = await analyzeColor(asset: asset) {
-            (color, h, s, b) = analyzed
-            colorCache[id] = ColorRecord(color: color, hue: h, saturation: s, brightness: b)
+        let analysis: PhotoAnalysis
+        if let cached = analysisCache[id] {
+            analysis = cached
+        } else if let computed = await analyzeAsset(asset: asset) {
+            analysis = computed
+            analysisCache[id] = computed
             cacheDirty = true
         } else {
-            (color, h, s, b) = (.darkGray, 0, 0, 0.3)
+            analysis = .unknown
         }
 
         return AnalyzedPhoto(
@@ -118,15 +117,19 @@ class PhotoProvider: ObservableObject {
             assetIdentifier: id,
             creationDate: asset.creationDate,
             location: asset.location,
-            dominantColor: color,
-            hue: h,
-            saturation: s,
-            brightness: b
+            dominantColor: analysis.color,
+            hue: analysis.hue,
+            saturation: analysis.saturation,
+            brightness: analysis.brightness,
+            isUtility: analysis.isUtility || isScreenshot,
+            aestheticsScore: Float(analysis.aesthetics),
+            saliencyRect: analysis.saliencyRect
         )
     }
 
-    /// Computes the dominant color from a small thumbnail (not retained).
-    private func analyzeColor(asset: PHAsset) async -> (NSColor, CGFloat, CGFloat, CGFloat)? {
+    /// Fetches one small thumbnail (not retained) and runs all on-device
+    /// analysis on it: dominant color, aesthetics/utility, and subject saliency.
+    private func analyzeAsset(asset: PHAsset) async -> PhotoAnalysis? {
         await withCheckedContinuation { continuation in
             let options = PHImageRequestOptions()
             options.deliveryMode = .fastFormat
@@ -137,8 +140,8 @@ class PhotoProvider: ObservableObject {
             var resumed = false
             imageManager.requestImage(
                 for: asset,
-                targetSize: CGSize(width: 120, height: 120),
-                contentMode: .aspectFill,
+                targetSize: CGSize(width: 512, height: 512),
+                contentMode: .aspectFit,
                 options: options
             ) { [weak self] nsImage, _ in
                 guard !resumed else { return }
@@ -149,7 +152,20 @@ class PhotoProvider: ObservableObject {
                     continuation.resume(returning: nil)
                     return
                 }
-                continuation.resume(returning: self.analyzeDominantColor(image: cgImage))
+
+                let (color, h, s, b) = self.analyzeDominantColor(image: cgImage)
+                let (aesthetics, isUtility) = self.analyzeAesthetics(image: cgImage)
+                let saliency = self.analyzeSaliency(image: cgImage)
+
+                continuation.resume(returning: PhotoAnalysis(
+                    color: color,
+                    hue: h,
+                    saturation: s,
+                    brightness: b,
+                    aesthetics: aesthetics,
+                    isUtility: isUtility,
+                    saliencyRect: saliency
+                ))
             }
         }
     }
@@ -187,6 +203,36 @@ class PhotoProvider: ObservableObject {
         color.getHue(&h, saturation: &s, brightness: &b, alpha: nil)
 
         return (color, h, s, b)
+    }
+
+    /// Returns (overall aesthetics score, isUtility). Utility = screenshot,
+    /// receipt, document, etc. Available on macOS 15+; (0, false) otherwise.
+    private func analyzeAesthetics(image: CGImage) -> (Double, Bool) {
+        guard #available(macOS 15.0, *) else { return (0, false) }
+        let request = VNCalculateImageAestheticsScoresRequest()
+        let handler = VNImageRequestHandler(cgImage: image, options: [:])
+        do {
+            try handler.perform([request])
+            guard let result = request.results?.first else { return (0, false) }
+            return (Double(result.overallScore), result.isUtility)
+        } catch {
+            return (0, false)
+        }
+    }
+
+    /// Returns the most salient object's normalized bounding box (Vision's
+    /// bottom-left origin), used to focus Ken Burns motion on the subject.
+    private func analyzeSaliency(image: CGImage) -> CGRect? {
+        let request = VNGenerateAttentionBasedSaliencyImageRequest()
+        let handler = VNImageRequestHandler(cgImage: image, options: [:])
+        do {
+            try handler.perform([request])
+            guard let observation = request.results?.first as? VNSaliencyImageObservation,
+                  let object = observation.salientObjects?.first else { return nil }
+            return object.boundingBox
+        } catch {
+            return nil
+        }
     }
 
     // MARK: - On-demand display images
@@ -237,13 +283,19 @@ class PhotoProvider: ObservableObject {
         }
     }
 
-    // MARK: - Color cache persistence
+    // MARK: - Analysis cache persistence
 
-    private struct ColorRecord: Codable {
+    private struct PhotoAnalysis: Codable {
         let r: Double, g: Double, b: Double
         let h: Double, s: Double, br: Double
+        let aesthetics: Double
+        let isUtility: Bool
+        let saliency: Rect?
 
-        init(color: NSColor, hue: CGFloat, saturation: CGFloat, brightness: CGFloat) {
+        struct Rect: Codable { let x: Double, y: Double, w: Double, h: Double }
+
+        init(color: NSColor, hue: CGFloat, saturation: CGFloat, brightness: CGFloat,
+             aesthetics: Double, isUtility: Bool, saliencyRect: CGRect?) {
             let c = color.usingColorSpace(.deviceRGB) ?? color
             r = Double(c.redComponent)
             g = Double(c.greenComponent)
@@ -251,32 +303,49 @@ class PhotoProvider: ObservableObject {
             h = Double(hue)
             s = Double(saturation)
             br = Double(brightness)
+            self.aesthetics = aesthetics
+            self.isUtility = isUtility
+            if let rect = saliencyRect {
+                saliency = Rect(x: Double(rect.minX), y: Double(rect.minY),
+                                w: Double(rect.width), h: Double(rect.height))
+            } else {
+                saliency = nil
+            }
+        }
+
+        static var unknown: PhotoAnalysis {
+            PhotoAnalysis(color: .darkGray, hue: 0, saturation: 0, brightness: 0.3,
+                          aesthetics: 0, isUtility: false, saliencyRect: nil)
         }
 
         var color: NSColor { NSColor(deviceRed: CGFloat(r), green: CGFloat(g), blue: CGFloat(b), alpha: 1) }
         var hue: CGFloat { CGFloat(h) }
         var saturation: CGFloat { CGFloat(s) }
         var brightness: CGFloat { CGFloat(br) }
+        var saliencyRect: CGRect? {
+            guard let s = saliency else { return nil }
+            return CGRect(x: s.x, y: s.y, width: s.w, height: s.h)
+        }
     }
 
     private var cacheURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let dir = base.appendingPathComponent("Eidetic", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("color-cache.json")
+        return dir.appendingPathComponent("analysis-cache.json")
     }
 
-    private func loadColorCache() {
-        guard colorCache.isEmpty,
+    private func loadAnalysisCache() {
+        guard analysisCache.isEmpty,
               let data = try? Data(contentsOf: cacheURL),
-              let decoded = try? JSONDecoder().decode([String: ColorRecord].self, from: data) else { return }
-        colorCache = decoded
+              let decoded = try? JSONDecoder().decode([String: PhotoAnalysis].self, from: data) else { return }
+        analysisCache = decoded
     }
 
-    private func saveColorCacheIfNeeded() {
+    private func saveAnalysisCacheIfNeeded() {
         guard cacheDirty else { return }
         cacheDirty = false
-        let snapshot = colorCache
+        let snapshot = analysisCache
         let url = cacheURL
         Task.detached {
             if let data = try? JSONEncoder().encode(snapshot) {
@@ -287,6 +356,14 @@ class PhotoProvider: ObservableObject {
 
     // MARK: - Filtered access
 
+    /// Photos worth putting on the wall — screenshots, receipts, and documents
+    /// are filtered out so the display is always frame-worthy.
+    var displayablePhotos: [AnalyzedPhoto] {
+        photos.filter { !$0.isUtility }
+    }
+
+    var hiddenUtilityCount: Int { photos.count - displayablePhotos.count }
+
     func photosForToday(windowDays: Int = 3) -> [(Int, AnalyzedPhoto)] {
         let calendar = Calendar.current
         let today = Date()
@@ -294,7 +371,7 @@ class PhotoProvider: ObservableObject {
         let day = calendar.component(.day, from: today)
         let currentYear = calendar.component(.year, from: today)
 
-        return photos.compactMap { photo in
+        return displayablePhotos.compactMap { photo in
             guard let date = photo.creationDate else { return nil }
             let m = calendar.component(.month, from: date)
             let d = calendar.component(.day, from: date)
@@ -329,7 +406,7 @@ class PhotoProvider: ObservableObject {
     /// Hue-sorted photos, evenly sampled across the spectrum so the Color Sort
     /// strip stays a manageable length even for very large libraries.
     func photosSortedByHue(limit: Int = 200) -> [AnalyzedPhoto] {
-        let sorted = photos
+        let sorted = displayablePhotos
             .filter { $0.saturation > 0.12 && $0.brightness > 0.15 }
             .sorted { $0.hue < $1.hue }
 
@@ -338,11 +415,18 @@ class PhotoProvider: ObservableObject {
         return (0..<limit).compactMap { sorted[safe: Int(Double($0) * step)] }
     }
 
+    /// Random photos biased toward higher aesthetics, so hero modes favor your
+    /// frame-worthy shots. On macOS < 15 (no aesthetics) this is a plain shuffle.
     func randomPhotos(_ count: Int) -> [AnalyzedPhoto] {
-        Array(photos.shuffled().prefix(count))
+        let pool = displayablePhotos
+        guard pool.count > count else { return pool.shuffled() }
+
+        let sorted = pool.sorted { $0.aestheticsScore > $1.aestheticsScore }
+        let keepers = sorted.prefix(max(count * 4, pool.count / 2))
+        return Array(keepers.shuffled().prefix(count))
     }
 
     func photosByYear() -> [Int: [AnalyzedPhoto]] {
-        Dictionary(grouping: photos.filter { $0.year != nil }, by: { $0.year! })
+        Dictionary(grouping: displayablePhotos.filter { $0.year != nil }, by: { $0.year! })
     }
 }

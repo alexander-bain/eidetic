@@ -17,7 +17,9 @@
 | UI Framework | SwiftUI (shared across all platforms) |
 | Photo Access | PhotoKit (PHPhotoLibrary, PHCachingImageManager) |
 | Color Analysis | Core Image (CIAreaAverage filter) |
+| Photo Intelligence | Vision — aesthetics/utility scoring + attention saliency (on-device) |
 | Face Detection | Vision framework (planned) |
+| Content Understanding | OpenAI vision + captions (planned, opt-in; hybrid on-device-first) |
 | Depth Data | AVDepthData from Portrait Mode photos (planned) |
 | Weather | WeatherKit (planned, for Weather Match mode) |
 | Sleep Prevention | ProcessInfo.beginActivity (macOS) / isIdleTimerDisabled (iOS) |
@@ -151,7 +153,14 @@ ContentView (switches between mode views with crossfade transitions)
 7. ~~**Cycling queue stale**~~ — ✅ `ModeCoordinator.enabledModesDidChange()` rebuilds the queue immediately
 8. ~~**No app lifecycle management**~~ — ✅ `AppDelegate` releases sleep-prevention assertion on quit
 
-**Architecture note (Phase 1):** Display images load on demand via `PhotoProvider.requestImage(_:)` with a 400-image LRU cap, so memory stays flat regardless of library size. Only color analysis (6 floats/photo) is cached to disk at `~/Library/Application Support/Eidetic/color-cache.json`. `AnalyzedPhoto` is a reference type (`ObservableObject`) so on-demand image loads update views in place.
+**Architecture note (Phase 1):** Display images load on demand via `PhotoProvider.requestImage(_:)` with a 400-image LRU cap, so memory stays flat regardless of library size. `AnalyzedPhoto` is a reference type (`ObservableObject`) so on-demand image loads update views in place.
+
+**Photo Intelligence (on-device).** During the background pass, each photo gets one ~512px thumbnail through three analyzers in `PhotoProvider.analyzeAsset`: dominant color (CIAreaAverage), aesthetics + utility detection (`VNCalculateImageAestheticsScoresRequest`, macOS 15+), and subject saliency (`VNGenerateAttentionBasedSaliencyImageRequest`). Results are cached to `~/Library/Application Support/Eidetic/analysis-cache.json`. Effects:
+- **Junk filtering** — screenshots (`PHAsset.mediaSubtypes.photoScreenshot`) + utility images (receipts/docs) are excluded via `displayablePhotos`; all modes select from it.
+- **Aesthetic ranking** — `randomPhotos` biases hero modes toward frame-worthy shots.
+- **Saliency-aware Ken Burns** — `AnalyzedPhoto.subjectAnchor` focuses the Magazine hero zoom on the subject.
+
+See [`docs/vision.md`](docs/vision.md) for the product thesis and the planned OpenAI content-understanding layer.
 
 ---
 

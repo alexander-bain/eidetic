@@ -31,6 +31,21 @@ Fix what's broken and make it feel like a real application.
 
 ---
 
+## Photo Intelligence (cross-cutting)
+
+The differentiator — see [`vision.md`](vision.md) for the full thesis. Built
+incrementally alongside the phases below.
+
+- [x] **On-device quality + saliency** — Vision aesthetics/utility scoring (junk
+  filtering), aesthetic-biased selection, attention-saliency-aware Ken Burns
+- [ ] On-device face/pet clustering + `featurePrint` embeddings (similarity/dedup)
+- [ ] **OpenAI semantic cache** — captions + mood/activity tags per frame-worthy
+  photo, cached to disk; caption embeddings for concept search (opt-in)
+- [ ] **The Curator** — daily AI-planned themed sessions with generative placards
+- [ ] Concept/mood modes + narrative diptychs over the semantic index
+
+---
+
 ## Phase 2: More Modes
 
 Build out the full 18-mode catalog. Each mode is a self-contained SwiftUI View conforming to the same pattern.
