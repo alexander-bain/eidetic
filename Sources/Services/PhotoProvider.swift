@@ -212,13 +212,15 @@ class PhotoProvider: ObservableObject {
             contentMode: .aspectFit,
             options: options
         ) { [weak self] image, info in
-            guard let image else { return }
             let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
             Task { @MainActor in
-                photo.image = image
+                if let image { photo.image = image }
+                // A non-degraded callback is terminal — whether it delivered the
+                // final image or failed. Clear the in-flight marker either way so
+                // a later appearance can retry instead of staying blank forever.
                 if !isDegraded {
                     self?.inFlight.remove(photo.id)
-                    self?.noteImageLoaded(photo)
+                    if image != nil { self?.noteImageLoaded(photo) }
                 }
             }
         }
