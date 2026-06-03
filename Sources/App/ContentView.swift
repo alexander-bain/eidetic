@@ -7,6 +7,13 @@ struct ContentView: View {
     @State private var showControls = false
     @State private var controlsTimer: Timer?
 
+    // Per-mode photo selections, refreshed when a mode begins rather than on
+    // every render — so hovering or background photo loading doesn't reshuffle
+    // what's on screen mid-animation.
+    @State private var magazineSelection: [AnalyzedPhoto] = []
+    @State private var colorSelection: [AnalyzedPhoto] = []
+    @State private var timelineSelection: [(Int, AnalyzedPhoto)] = []
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
@@ -22,6 +29,13 @@ struct ContentView: View {
         }
         .frame(minWidth: 800, minHeight: 500)
         .onAppear { startIfNeeded() }
+        .onDisappear {
+            controlsTimer?.invalidate()
+            controlsTimer = nil
+        }
+        .onChange(of: coordinator.currentMode) { _, _ in
+            refreshSelections()
+        }
         .onHover { hovering in
             if hovering { showControlsBriefly() }
         }
@@ -44,13 +58,13 @@ struct ContentView: View {
         ZStack {
             switch coordinator.currentMode {
             case .magazineSpread:
-                MagazineSpreadView(photos: photoProvider.randomPhotos(20))
+                MagazineSpreadView(photos: magazineSelection)
                     .transition(.opacity)
             case .splitTimeline:
-                SplitTimelineView(photosByYear: photoProvider.photosForToday())
+                SplitTimelineView(photosByYear: timelineSelection)
                     .transition(.opacity)
             case .colorSort:
-                ColorSortView(photos: photoProvider.photosSortedByHue())
+                ColorSortView(photos: colorSelection)
                     .transition(.opacity)
             }
         }
@@ -65,7 +79,7 @@ struct ContentView: View {
             HStack {
                 Spacer()
                 HStack(spacing: 16) {
-                    Image(systemName: coordinator.currentMode.systemImage)
+                    Image(systemName: coordinator.isPaused ? "pause.fill" : coordinator.currentMode.systemImage)
                         .font(.system(size: 12))
                     Text(coordinator.currentMode.rawValue)
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -120,7 +134,7 @@ struct ContentView: View {
                 .foregroundColor(.white.opacity(0.3))
                 .padding(.bottom, 8)
 
-            Text("Photo Cycler")
+            Text("Eidetic")
                 .font(.system(size: 28, weight: .light, design: .serif))
                 .foregroundColor(.white.opacity(0.8))
 
@@ -146,9 +160,16 @@ struct ContentView: View {
             await photoProvider.requestAuthorization()
             await photoProvider.loadPhotos()
             if photoProvider.photos.isNotEmpty {
+                refreshSelections()
                 coordinator.startCycling()
             }
         }
+    }
+
+    private func refreshSelections() {
+        magazineSelection = photoProvider.randomPhotos(24)
+        colorSelection = photoProvider.photosSortedByHue()
+        timelineSelection = photoProvider.splitTimelinePhotos()
     }
 
     private func showControlsBriefly() {

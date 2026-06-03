@@ -5,28 +5,29 @@
 Fix what's broken and make it feel like a real application.
 
 ### App Shell
-- [ ] Rename from PhotoCycler → Eidetic (bundle ID, display name, struct names, entitlements, filenames)
-- [ ] Add AppDelegate for proper lifecycle management (window close, app termination, sleep/wake notifications)
-- [ ] Menu bar: Play/Pause, Next Mode, Stay Awake toggle, mode picker submenu, Quit
-- [ ] Dock icon with app name
-- [ ] Settings window accessible from menu bar (Cmd+,) — currently exists but unreachable
+- [x] Rename from PhotoCycler → Eidetic (bundle ID, display name, struct names, entitlements, filenames)
+- [x] Add AppDelegate for proper lifecycle management (window close, app termination, sleep/wake notifications)
+- [x] Menu bar: Play/Pause, Next Mode, Stay Awake toggle, mode picker submenu, Quit
+- [x] Dock icon with app name (via `setActivationPolicy(.regular)`)
+- [x] Settings window accessible from menu bar (Cmd+,) — currently exists but unreachable
 
 ### Photo Loading
-- [ ] Remove 500-photo hardcoded limit — load entire library
-- [ ] Background batch color analysis (don't block launch; show photos as they're analyzed)
-- [ ] Cache analyzed color data to disk so re-launches are instant
-- [ ] Progress indicator during initial analysis (first launch only)
+- [x] Remove 500-photo hardcoded limit — load entire library
+- [x] Background batch color analysis (don't block launch; show photos as they're analyzed)
+- [x] Cache analyzed color data to disk so re-launches are instant
+- [x] Progress indicator during initial analysis (first launch only)
+- [x] On-demand display-image loading with LRU cap (memory stays flat at any library size)
 
 ### Mode Fixes
-- [ ] **Color Sort**: Scale scroll duration to photo count — minimum 2 seconds visible per photo. If 200 photos, scroll takes 400s minimum. Add gentle easing at start/end instead of linear scroll.
-- [ ] **Split Timeline**: When no today-matches exist, fall back to random year pairs from the full library. Always show something interesting.
-- [ ] **Magazine Spread**: More Ken Burns direction variety (8+ patterns instead of 4). Randomize instead of cycling deterministically.
+- [x] **Color Sort**: Scale scroll duration to photo count — minimum 2 seconds visible per photo. If 200 photos, scroll takes 400s minimum. Add gentle easing at start/end instead of linear scroll.
+- [x] **Split Timeline**: When no today-matches exist, fall back to random year pairs from the full library. Always show something interesting.
+- [x] **Magazine Spread**: More Ken Burns direction variety (8+ patterns instead of 4). Randomize instead of cycling deterministically.
 
 ### Stability
-- [ ] Fix controlsTimer leak in ContentView (invalidate on disappear)
-- [ ] Update cycling queue immediately when enabled modes change in Settings
-- [ ] Persist settings via UserDefaults (enabled modes, stay awake, window state)
-- [ ] Clean up sleep prevention on app quit
+- [x] Fix controlsTimer leak in ContentView (invalidate on disappear)
+- [x] Update cycling queue immediately when enabled modes change in Settings
+- [x] Persist settings via UserDefaults (enabled modes, stay awake, window state)
+- [x] Clean up sleep prevention on app quit
 
 ---
 

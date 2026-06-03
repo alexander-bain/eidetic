@@ -49,12 +49,9 @@ struct SplitTimelineView: View {
 
     private func timelinePanel(photo: AnalyzedPhoto, year: Int, alignment: Alignment) -> some View {
         ZStack(alignment: alignment) {
-            if let img = photo.image {
-                Image(nsImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .clipped()
-            }
+            AsyncPhotoImage(photo: photo)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
 
             LinearGradient(
                 colors: [.clear, .clear, .black.opacity(0.7)],
@@ -79,12 +76,9 @@ struct SplitTimelineView: View {
 
     private func singlePhotoFallback(photo: AnalyzedPhoto, year: Int) -> some View {
         ZStack(alignment: .bottomLeading) {
-            if let img = photo.image {
-                Image(nsImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .clipped()
-            }
+            AsyncPhotoImage(photo: photo)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
 
             LinearGradient(
                 colors: [.clear, .black.opacity(0.6)],

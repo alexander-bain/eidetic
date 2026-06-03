@@ -7,7 +7,16 @@ struct ColorSortView: View {
 
     private let photoWidth: CGFloat = 280
     private let overlap: CGFloat = 40
-    private let scrollDuration: TimeInterval = 45
+
+    // Each photo should stay readable for at least this long as it passes.
+    private let secondsPerPhoto: TimeInterval = 2.5
+    private let minScrollDuration: TimeInterval = 20
+
+    /// Scroll duration scales with the number of photos so the strip never
+    /// whips by — every photo gets its moment.
+    private var scrollDuration: TimeInterval {
+        max(minScrollDuration, Double(photos.count) * secondsPerPhoto)
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -72,7 +81,7 @@ struct ColorSortView: View {
     }
 
     private func photoStrip(maxScroll: CGFloat, height: CGFloat) -> some View {
-        GeometryReader { stripGeo in
+        GeometryReader { _ in
             HStack(spacing: -overlap) {
                 ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
                     photoCard(photo: photo, index: index, height: height)
@@ -86,23 +95,17 @@ struct ColorSortView: View {
     }
 
     private func photoCard(photo: AnalyzedPhoto, index: Int, height: CGFloat) -> some View {
-        Group {
-            if let img = photo.image {
-                Image(nsImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: photoWidth, height: height * 0.85)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(.white.opacity(0.06), lineWidth: 1)
-                    )
-                    .shadow(color: .black.opacity(0.5), radius: 20, y: 12)
-                    .rotationEffect(.degrees(tiltAngle(for: index)))
-                    .offset(y: verticalOffset(for: index))
-                    .zIndex(Double(photos.count - index))
-            }
-        }
+        AsyncPhotoImage(photo: photo)
+            .frame(width: photoWidth, height: height * 0.85)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(.white.opacity(0.06), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.5), radius: 20, y: 12)
+            .rotationEffect(.degrees(tiltAngle(for: index)))
+            .offset(y: verticalOffset(for: index))
+            .zIndex(Double(photos.count - index))
     }
 
     private func tiltAngle(for index: Int) -> Double {
@@ -120,11 +123,14 @@ struct ColorSortView: View {
         isAnimating = true
         scrollProgress = 0
 
-        withAnimation(.linear(duration: scrollDuration)) {
+        let duration = scrollDuration
+        // Gentle ease in/out at the ends with a near-constant pace through the
+        // middle, instead of a dizzying linear sweep.
+        withAnimation(.timingCurve(0.25, 0.0, 0.75, 1.0, duration: duration)) {
             scrollProgress = 1.0
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + scrollDuration + 1) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration + 1) {
             isAnimating = false
             scrollProgress = 0
             startScrolling()

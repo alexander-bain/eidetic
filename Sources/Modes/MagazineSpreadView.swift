@@ -47,19 +47,15 @@ struct MagazineSpreadView: View {
                     .padding(.bottom, 32)
             }
 
-            if let img = photo.image {
-                Image(nsImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: min(width * 0.55, 220), height: min(width * 0.55, 220))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(.white.opacity(0.08), lineWidth: 1)
-                    )
-                    .shadow(color: .black.opacity(0.4), radius: 20, y: 10)
-                    .padding(.bottom, 24)
-            }
+            AsyncPhotoImage(photo: photo)
+                .frame(width: min(width * 0.55, 220), height: min(width * 0.55, 220))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(.white.opacity(0.08), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.4), radius: 20, y: 10)
+                .padding(.bottom, 24)
 
             HStack(spacing: 8) {
                 Circle()
@@ -78,17 +74,11 @@ struct MagazineSpreadView: View {
     }
 
     private func heroPanel(photo: AnalyzedPhoto, size: CGSize) -> some View {
-        Group {
-            if let img = photo.image {
-                Image(nsImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: size.width, height: size.height)
-                    .clipped()
-                    .scaleEffect(kenBurnsScale)
-                    .offset(kenBurnsOffset)
-            }
-        }
+        AsyncPhotoImage(photo: photo)
+            .frame(width: size.width, height: size.height)
+            .clipped()
+            .scaleEffect(kenBurnsScale)
+            .offset(kenBurnsOffset)
     }
 
     private var emptyState: some View {
@@ -113,8 +103,12 @@ struct MagazineSpreadView: View {
             (1.06, CGSize(width: 20, height: -20)),
             (1.07, CGSize(width: -15, height: 25)),
             (1.05, CGSize(width: 25, height: 10)),
+            (1.09, CGSize(width: 30, height: 20)),
+            (1.06, CGSize(width: -25, height: -25)),
+            (1.10, CGSize(width: -20, height: 18)),
+            (1.05, CGSize(width: 18, height: -28)),
         ]
-        let pick = directions[currentIndex % directions.count]
+        let pick = directions.randomElement() ?? directions[0]
 
         withAnimation(.easeInOut(duration: cycleDuration)) {
             kenBurnsScale = pick.0

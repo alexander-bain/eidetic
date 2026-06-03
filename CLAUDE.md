@@ -116,12 +116,15 @@ ContentView (switches between mode views with crossfade transitions)
 - **Type-check from CLI**: `xcrun swiftc -typecheck -sdk $(xcrun --show-sdk-path) -target arm64-apple-macosx14.0 Sources/**/*.swift`
 - **Full Xcode project** (when needed for signing/entitlements): Install xcodegen, run `xcodegen generate`, open `Eidetic.xcodeproj`
 
-### Keyboard Shortcuts (in-app)
+### Keyboard Shortcuts
 | Key | Action |
 |-----|--------|
 | F | Toggle full screen |
 | → | Skip to next mode |
 | Space | Toggle stay-awake |
+| Cmd+P | Play/Pause cycling (menu) |
+| Cmd+→ | Next mode (menu) |
+| Cmd+L | Toggle stay-awake (menu) |
 | Cmd+, | Open Settings |
 
 ---
@@ -137,16 +140,18 @@ ContentView (switches between mode views with crossfade transitions)
 
 ---
 
-## Known Issues (Phase 1 fixes)
+## Phase 1 Status — Resolved
 
-1. **No menu bar or dock controls** — app runs but has no way to access settings, pause, or quit gracefully
-2. **Hardcoded 500-photo limit** — should load entire library with background batch analysis
-3. **Color Sort scrolls too fast** — duration doesn't scale with photo count; dizzying with many photos
-4. **Split Timeline empty most days** — only matches exact month/day ±3 days; needs year-pair fallback
-5. **Settings don't persist** — all preferences reset on relaunch
-6. **Timer leaks** — controlsTimer in ContentView not invalidated on view dismiss
-7. **Cycling queue stale** — changing enabled modes in Settings doesn't update current cycle
-8. **No app lifecycle management** — no AppDelegate, sleep prevention may outlive the window
+1. ~~**No menu bar or dock controls**~~ — ✅ Menu bar (Playback menu: Play/Pause, Next Mode, Stay Awake, mode picker); dock icon via `NSApp.setActivationPolicy(.regular)`
+2. ~~**Hardcoded 500-photo limit**~~ — ✅ Loads entire library; first batch shown immediately, rest analyzed in background chunks
+3. ~~**Color Sort scrolls too fast**~~ — ✅ Scroll duration scales with photo count (≥2.5s/photo), gentle ease-in/out timing curve
+4. ~~**Split Timeline empty most days**~~ — ✅ Falls back to random pairs from different years when no "on this day" matches
+5. ~~**Settings don't persist**~~ — ✅ Enabled modes + stay-awake saved to UserDefaults; window frame autosaved
+6. ~~**Timer leaks**~~ — ✅ `controlsTimer` invalidated in ContentView `.onDisappear`
+7. ~~**Cycling queue stale**~~ — ✅ `ModeCoordinator.enabledModesDidChange()` rebuilds the queue immediately
+8. ~~**No app lifecycle management**~~ — ✅ `AppDelegate` releases sleep-prevention assertion on quit
+
+**Architecture note (Phase 1):** Display images load on demand via `PhotoProvider.requestImage(_:)` with a 400-image LRU cap, so memory stays flat regardless of library size. Only color analysis (6 floats/photo) is cached to disk at `~/Library/Application Support/Eidetic/color-cache.json`. `AnalyzedPhoto` is a reference type (`ObservableObject`) so on-demand image loads update views in place.
 
 ---
 
