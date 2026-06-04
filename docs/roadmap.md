@@ -61,7 +61,7 @@ first, so each wave reuses the last.
 ### Wave 2 — Geo (MapKit + reverse geocoding)
 - [x] **Reverse-geocoding grounding layer** (`Geocoder`) — coordinates → real place names, cached; reused by all geo modes. *Done.*
 - [x] **The Map Room** — animated map flying between your photo locations, blooming each memory (photo + date + geocoded place name). *Done.*
-- [ ] **Same Spot, Different Time** — one GPS place across years, auto-aligned to matching framing.
+- [x] **Same Spot, Different Time** — one place (coarse-coordinate cluster) revisited across years; photos cross-fade chronologically under the geocoded place name. *Done.* (Framing auto-alignment is a future refinement.)
 
 ### Wave 3 — Face clustering (Vision faceprints + naming UI)
 - [ ] **A Life in Faces** — one person, aging across every photo, date-ordered and morphing.

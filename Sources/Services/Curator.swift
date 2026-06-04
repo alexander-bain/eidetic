@@ -52,6 +52,9 @@ final class Curator {
 
         case .mapRoom:
             return CuratedPlacard(title: "The Map Room", subtitle: "everywhere you've been")
+
+        case .sameSpot:
+            return CuratedPlacard(title: "Same Spot", subtitle: "one place, across the years")
         }
     }
 
@@ -116,6 +119,7 @@ final class Curator {
         case .colorSort: return "a flowing strip of photos arranged by color"
         case .timeMachineRadio: return "a narrated memoir of this week across past years"
         case .mapRoom: return "a map flying between the places these photos were taken"
+        case .sameSpot: return "one place revisited across several years"
         }
     }
 

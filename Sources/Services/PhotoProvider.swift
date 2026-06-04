@@ -484,6 +484,27 @@ class PhotoProvider: ObservableObject {
         Dictionary(grouping: curatedPhotos.filter { $0.year != nil }, by: { $0.year! })
     }
 
+    /// One place you've returned to over the years — a coarse-coordinate cluster
+    /// with photos from ≥2 distinct years — chosen at random for variety, its
+    /// photos in chronological order. Powers Same Spot, Different Time.
+    func sameSpotPhotos(limit: Int = 14) -> [AnalyzedPhoto] {
+        let located = curatedPhotos.filter { $0.location != nil }
+        let clusters = Dictionary(grouping: located) { photo -> String in
+            let c = photo.location!.coordinate
+            return String(format: "%.2f,%.2f", c.latitude, c.longitude) // ~1km cells
+        }
+
+        let candidates = clusters.values.filter { photos in
+            photos.count >= 3 && Set(photos.compactMap(\.year)).count >= 2
+        }
+        guard let chosen = candidates.randomElement() else { return [] }
+
+        let sorted = chosen.sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
+        guard sorted.count > limit else { return sorted }
+        let step = Double(sorted.count) / Double(limit)
+        return (0..<limit).compactMap { sorted[safe: Int(Double($0) * step)] }
+    }
+
     /// Located photos for The Map Room, in chronological order so the camera
     /// flies through your travels over time. Sampled to a session length.
     func locatedPhotos(limit: Int = 50) -> [AnalyzedPhoto] {

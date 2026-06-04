@@ -6,6 +6,7 @@ enum DisplayModeType: String, CaseIterable, Identifiable {
     case colorSort = "Color Sort"
     case timeMachineRadio = "Time Machine Radio"
     case mapRoom = "The Map Room"
+    case sameSpot = "Same Spot, Different Time"
 
     var id: String { rawValue }
 
@@ -16,6 +17,7 @@ enum DisplayModeType: String, CaseIterable, Identifiable {
         case .colorSort: return 50
         case .timeMachineRadio: return 66
         case .mapRoom: return 64
+        case .sameSpot: return 54
         }
     }
 
@@ -26,6 +28,7 @@ enum DisplayModeType: String, CaseIterable, Identifiable {
         case .colorSort: return "paintpalette"
         case .timeMachineRadio: return "antenna.radiowaves.left.and.right"
         case .mapRoom: return "map"
+        case .sameSpot: return "mappin.and.ellipse"
         }
     }
 }

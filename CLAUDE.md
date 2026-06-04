@@ -104,7 +104,7 @@ ambient baseline; everything new is from the reimagined catalog.
 | **Time Machine Radio** | **Built** | LLM + dates | This week across all years, narrated by on-device LLM (Curator) |
 | **The Map Room** | **Built** | geo | Map flying between your photo locations (photo + date + geocoded place name) |
 | Reverse Postcard | Planned (needs grounding) | LLM + geo | The postcard you never sent — deferred until grounded to avoid hallucination |
-| Same Spot, Different Time | Planned | geo | One GPS place across years, framing-aligned |
+| **Same Spot, Different Time** | **Built** | geo | One place revisited across years, under its geocoded name |
 | A Life in Faces | Planned | faces | One person, aging across every photo, morphing |
 | The Cast | Planned | faces | Your social universe as a living credits roll |
 | Thematic Threads | Planned | semantic | A hidden visual thread across the whole library |

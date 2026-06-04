@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var timelineSelection: [(Int, AnalyzedPhoto)] = []
     @State private var timeMachineChapters: [TimeMachineChapter] = []
     @State private var mapStops: [MapStop] = []
+    @State private var sameSpotSelection: [AnalyzedPhoto] = []
 
     // The curator writes a gallery placard for each segment.
     private let curator = Curator()
@@ -86,6 +87,9 @@ struct ContentView: View {
                     .transition(.opacity)
             case .mapRoom:
                 MapRoomView(stops: mapStops)
+                    .transition(.opacity)
+            case .sameSpot:
+                SameSpotView(photos: sameSpotSelection)
                     .transition(.opacity)
             }
         }
@@ -231,6 +235,7 @@ struct ContentView: View {
             let dateString = photo.creationDate.map(Self.mapDateFormatter.string) ?? ""
             return MapStop(photo: photo, coordinate: location.coordinate, dateString: dateString)
         }
+        sameSpotSelection = photoProvider.sameSpotPhotos()
         refreshPlacard()
     }
 
@@ -287,6 +292,7 @@ struct ContentView: View {
         case .splitTimeline: photos = timelineSelection.map(\.1)
         case .timeMachineRadio: photos = timeMachineChapters.map(\.photo)
         case .mapRoom: photos = mapStops.map(\.photo)
+        case .sameSpot: photos = sameSpotSelection
         }
 
         let years = Array(Set(photos.compactMap(\.year))).sorted()
