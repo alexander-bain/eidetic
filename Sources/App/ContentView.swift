@@ -14,7 +14,6 @@ struct ContentView: View {
     @State private var colorSelection: [AnalyzedPhoto] = []
     @State private var timelineSelection: [(Int, AnalyzedPhoto)] = []
     @State private var timeMachineChapters: [TimeMachineChapter] = []
-    @State private var timeMachineTask: Task<Void, Never>?
 
     // The curator writes a gallery placard for each segment.
     private let curator = Curator()
@@ -42,7 +41,6 @@ struct ContentView: View {
             controlsTimer?.invalidate()
             controlsTimer = nil
             placardTask?.cancel()
-            timeMachineTask?.cancel()
         }
         .onChange(of: coordinator.currentMode) { _, _ in
             refreshSelections()
@@ -225,25 +223,17 @@ struct ContentView: View {
             let month = entry.photos.first?.creationDate.map(monthFormatter.string) ?? "that week"
             return MemoirYear(year: entry.year, count: entry.photos.count, monthName: month)
         }
-        let fallback = Curator.memoirFallback(for: memoirYears)
+        let lines = Curator.memoirFactual(for: memoirYears)
 
         timeMachineChapters = entries.map { entry in
             let representative = entry.photos
                 .sorted { lhs, rhs in
                     if lhs.isFavorite != rhs.isFavorite { return lhs.isFavorite }
+                    if lhs.isUtility != rhs.isUtility { return !lhs.isUtility }
                     return lhs.aestheticsScore > rhs.aestheticsScore
                 }
                 .first ?? entry.photos[0]
-            return TimeMachineChapter(year: entry.year, photo: representative, line: fallback[entry.year] ?? "")
-        }
-
-        timeMachineTask?.cancel()
-        timeMachineTask = Task {
-            let lines = await curator.memoir(for: memoirYears)
-            if Task.isCancelled { return }
-            timeMachineChapters = timeMachineChapters.map { chapter in
-                TimeMachineChapter(year: chapter.year, photo: chapter.photo, line: lines[chapter.year] ?? chapter.line)
-            }
+            return TimeMachineChapter(year: entry.year, photo: representative, line: lines[entry.year] ?? "")
         }
     }
 

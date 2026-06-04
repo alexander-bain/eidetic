@@ -135,65 +135,25 @@ struct MemoirYear {
 }
 
 extension Curator {
-    /// One evocative line per year for Time Machine Radio. Always returns a
-    /// templated line per year; upgrades to on-device LLM narration when available.
+    /// One line per year for Time Machine Radio.
+    ///
+    /// Deliberately **factual**, not evocative: the model can't see the photos,
+    /// so anything "poetic" it writes is hallucinated (see the 2015-screenshot
+    /// incident). We only state what's true — how long ago, the month, the count.
+    /// Evocative, grounded narration returns once we have real content
+    /// understanding (Wave 4 captions in docs/vision.md).
     func memoir(for years: [MemoirYear]) async -> [Int: String] {
-        var lines = Self.memoirFallback(for: years)
-
-        guard #available(macOS 26.0, *), !years.isEmpty else { return lines }
-        guard case .available = SystemLanguageModel.default.availability else { return lines }
-
-        do {
-            let session = LanguageModelSession(instructions: Self.memoirInstructions)
-            let response = try await session.respond(to: Self.memoirPrompt(for: years))
-            for (year, line) in Self.parseMemoir(response.content) {
-                lines[year] = line
-            }
-        } catch {
-            // keep the templated lines
-        }
-        return lines
+        Self.memoirFactual(for: years)
     }
 
-    static func memoirFallback(for years: [MemoirYear]) -> [Int: String] {
+    static func memoirFactual(for years: [MemoirYear]) -> [Int: String] {
         let currentYear = Calendar.current.component(.year, from: Date())
         var result: [Int: String] = [:]
         for entry in years {
             let ago = currentYear - entry.year
-            let agoPhrase = ago <= 1 ? "one year ago" : "\(ago) years ago"
-            let frames = entry.count == 1 ? "a single frame" : "\(entry.count) frames"
-            result[entry.year] = "\(agoPhrase) — \(frames) from \(entry.monthName)."
-        }
-        return result
-    }
-
-    private static let memoirInstructions = """
-    You are narrating someone's photo memoir, week by week. You are given several \
-    years — all the same week of the year, across the past — with how many photos \
-    each holds. For each year, write ONE line: at most ~12 words, quiet and \
-    evocative, like a gallery placard or a line of a memoir. Never invent specific \
-    people, places, or events you weren't told about. Vary the phrasing year to year.
-
-    Output exactly one line per year, formatted "YEAR: line". No other text.
-    """
-
-    private static func memoirPrompt(for years: [MemoirYear]) -> String {
-        let facts = years
-            .map { "\($0.year): \($0.count) photos, around \($0.monthName)." }
-            .joined(separator: "\n")
-        return "Write the memoir lines for this same week across these years:\n\n\(facts)"
-    }
-
-    private static func parseMemoir(_ text: String) -> [Int: String] {
-        var result: [Int: String] = [:]
-        for raw in text.split(whereSeparator: \.isNewline) {
-            let line = raw.trimmingCharacters(in: .whitespaces)
-            guard let colon = line.firstIndex(of: ":") else { continue }
-            let yearPart = line[..<colon].trimmingCharacters(in: .whitespaces)
-            let caption = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
-            if let year = Int(yearPart.prefix(4)), !caption.isEmpty {
-                result[year] = caption
-            }
+            let agoPhrase = ago <= 1 ? "one year ago this week" : "\(ago) years ago this week"
+            let photos = entry.count == 1 ? "1 photo" : "\(entry.count) photos"
+            result[entry.year] = "\(entry.monthName) \(entry.year) · \(agoPhrase) · \(photos)"
         }
         return result
     }

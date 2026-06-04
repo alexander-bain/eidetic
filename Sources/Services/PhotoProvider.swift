@@ -162,7 +162,8 @@ class PhotoProvider: ObservableObject {
                 }
 
                 let (color, h, s, b) = self.analyzeDominantColor(image: cgImage)
-                let (aesthetics, isUtility) = self.analyzeAesthetics(image: cgImage)
+                let (aesthetics, aestheticUtility) = self.analyzeAesthetics(image: cgImage)
+                let textHeavy = self.analyzeTextHeavy(image: cgImage)
                 let saliency = self.analyzeSaliency(image: cgImage)
 
                 continuation.resume(returning: PhotoAnalysis(
@@ -171,7 +172,7 @@ class PhotoProvider: ObservableObject {
                     saturation: s,
                     brightness: b,
                     aesthetics: aesthetics,
-                    isUtility: isUtility,
+                    isUtility: aestheticUtility || textHeavy,
                     saliencyRect: saliency
                 ))
             }
@@ -224,6 +225,27 @@ class PhotoProvider: ObservableObject {
             return (Double(result.overallScore), result.isUtility)
         } catch {
             return (0, false)
+        }
+    }
+
+    /// True when the image is dominated by text — a screenshot (incl. received
+    /// ones with no screenshot subtype), receipt, document, or meme. Catches what
+    /// the aesthetics `isUtility` flag and `PHAsset.mediaSubtypes` miss.
+    private func analyzeTextHeavy(image: CGImage) -> Bool {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .fast
+        request.usesLanguageCorrection = false
+        let handler = VNImageRequestHandler(cgImage: image, options: [:])
+        do {
+            try handler.perform([request])
+            guard let results = request.results, !results.isEmpty else { return false }
+            let coverage = results.reduce(0.0) { sum, observation in
+                sum + Double(observation.boundingBox.width * observation.boundingBox.height)
+            }
+            // A lot of text, covering a meaningful fraction of the frame.
+            return coverage > 0.30 || (results.count >= 8 && coverage > 0.10)
+        } catch {
+            return false
         }
     }
 
@@ -339,7 +361,8 @@ class PhotoProvider: ObservableObject {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let dir = base.appendingPathComponent("Eidetic", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("analysis-cache.json")
+        // v2: added OCR text-heavy detection to utility filtering.
+        return dir.appendingPathComponent("analysis-cache-v2.json")
     }
 
     private func loadAnalysisCache() {

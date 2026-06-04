@@ -72,6 +72,12 @@ over a 12k-favorite library, cached forever — and even that has a free local p
   permanent cache keep spend low.
 - **Taste** — LLM curation can misfire; caching means a bad day costs nothing to
   re-roll, and guardrails constrain the output.
+- **Grounding (hard rule)** — the on-device LLM cannot see photos, so it must
+  never write evocative claims about specific images. It *will* hallucinate
+  (early Time Machine Radio narrated a check-mailing screenshot as "sun-drenched
+  mornings, laughter echoing"). Until Wave 4 content captions land, any
+  per-photo/per-year copy stays strictly **factual** (date, count, place). The
+  evocative voice returns only once it's grounded in real content understanding.
 
 ## Build order
 
