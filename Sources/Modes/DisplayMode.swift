@@ -7,6 +7,7 @@ enum DisplayModeType: String, CaseIterable, Identifiable {
     case timeMachineRadio = "Time Machine Radio"
     case mapRoom = "The Map Room"
     case sameSpot = "Same Spot, Different Time"
+    case reversePostcard = "Reverse Postcard"
 
     var id: String { rawValue }
 
@@ -18,6 +19,7 @@ enum DisplayModeType: String, CaseIterable, Identifiable {
         case .timeMachineRadio: return 66
         case .mapRoom: return 64
         case .sameSpot: return 54
+        case .reversePostcard: return 58
         }
     }
 
@@ -29,6 +31,7 @@ enum DisplayModeType: String, CaseIterable, Identifiable {
         case .timeMachineRadio: return "antenna.radiowaves.left.and.right"
         case .mapRoom: return "map"
         case .sameSpot: return "mappin.and.ellipse"
+        case .reversePostcard: return "envelope"
         }
     }
 }

@@ -56,7 +56,7 @@ first, so each wave reuses the last.
 
 ### Wave 1 — LLM + existing metadata (reuses Curator + PhotoProvider)
 - [x] **Time Machine Radio** — this week across all years, narrated as a memoir by the on-device LLM (Apple Foundation Models). *First build — done.*
-- [ ] **Reverse Postcard** — picks a trip, writes (in your voice) the postcard you never sent.
+- [x] **Reverse Postcard** — picks a past trip (date cluster away from home), writes a postcard grounded strictly in facts (geocoded place, dates, length, photo count); the LLM is forbidden from inventing photo content. *Done.*
 
 ### Wave 2 — Geo (MapKit + reverse geocoding)
 - [x] **Reverse-geocoding grounding layer** (`Geocoder`) — coordinates → real place names, cached; reused by all geo modes. *Done.*

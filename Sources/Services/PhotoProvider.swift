@@ -1,8 +1,17 @@
 import Photos
 import AppKit
 import CoreImage
+import CoreLocation
 import Vision
 import Combine
+
+/// A trip: a temporally-tight cluster of located photos away from home.
+struct PostcardTrip {
+    let photos: [AnalyzedPhoto]
+    let coordinate: CLLocationCoordinate2D
+    let startDate: Date
+    let endDate: Date
+}
 
 @MainActor
 class PhotoProvider: ObservableObject {
@@ -503,6 +512,53 @@ class PhotoProvider: ObservableObject {
         guard sorted.count > limit else { return sorted }
         let step = Double(sorted.count) / Double(limit)
         return (0..<limit).compactMap { sorted[safe: Int(Double($0) * step)] }
+    }
+
+    /// A random past trip — a tight date cluster of located photos away from
+    /// home — for Reverse Postcard. Returns nil if none qualify.
+    func reversePostcardTrip() -> PostcardTrip? {
+        let located = curatedPhotos
+            .filter { $0.location != nil && $0.creationDate != nil }
+            .sorted { $0.creationDate! < $1.creationDate! }
+        guard located.count >= 5 else { return nil }
+
+        // Coarse ~11km cells to tell "home" (most common) from "away".
+        func cell(_ photo: AnalyzedPhoto) -> String {
+            let c = photo.location!.coordinate
+            return String(format: "%.1f,%.1f", c.latitude, c.longitude)
+        }
+        let homeCell = Dictionary(grouping: located, by: cell)
+            .max { $0.value.count < $1.value.count }?.key
+
+        // Segment by date gaps > 4 days.
+        var trips: [[AnalyzedPhoto]] = []
+        var current: [AnalyzedPhoto] = []
+        for photo in located {
+            if let last = current.last,
+               photo.creationDate!.timeIntervalSince(last.creationDate!) > 4 * 86_400 {
+                trips.append(current)
+                current = []
+            }
+            current.append(photo)
+        }
+        if !current.isEmpty { trips.append(current) }
+
+        let qualifying = trips.filter { trip in
+            guard trip.count >= 5,
+                  trip.last!.creationDate!.timeIntervalSince(trip.first!.creationDate!) <= 21 * 86_400
+            else { return false }
+            let dominant = Dictionary(grouping: trip, by: cell).max { $0.value.count < $1.value.count }?.key
+            return dominant != nil && dominant != homeCell
+        }
+        guard let trip = qualifying.randomElement() else { return nil }
+
+        let dominant = Dictionary(grouping: trip, by: cell).max { $0.value.count < $1.value.count }!
+        return PostcardTrip(
+            photos: trip,
+            coordinate: dominant.value.first!.location!.coordinate,
+            startDate: trip.first!.creationDate!,
+            endDate: trip.last!.creationDate!
+        )
     }
 
     /// Located photos for The Map Room, in chronological order so the camera

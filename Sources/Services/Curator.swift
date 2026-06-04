@@ -55,6 +55,9 @@ final class Curator {
 
         case .sameSpot:
             return CuratedPlacard(title: "Same Spot", subtitle: "one place, across the years")
+
+        case .reversePostcard:
+            return CuratedPlacard(title: "Postcard", subtitle: "a trip, remembered")
         }
     }
 
@@ -120,6 +123,7 @@ final class Curator {
         case .timeMachineRadio: return "a narrated memoir of this week across past years"
         case .mapRoom: return "a map flying between the places these photos were taken"
         case .sameSpot: return "one place revisited across several years"
+        case .reversePostcard: return "a written postcard from a past trip"
         }
     }
 
@@ -138,6 +142,66 @@ final class Curator {
         let span = Calendar.current.component(.year, from: Date()) - earliest
         if span > 0 { return span == 1 ? "one year ago" : "as far back as \(span) years ago" }
         return "from years past"
+    }
+}
+
+// MARK: - Reverse Postcard
+
+/// The only things a postcard may reference — all facts, nothing invented.
+struct PostcardFacts {
+    let place: String
+    let monthYear: String
+    let days: Int
+    let photoCount: Int
+}
+
+extension Curator {
+    /// A short postcard grounded strictly in the given facts. On-device LLM for
+    /// the voice when available; a safe deterministic fallback otherwise. The
+    /// model is forbidden from inventing scenery, food, weather, or companions.
+    func postcard(for facts: PostcardFacts) async -> String {
+        let fallback = Self.postcardFallback(facts)
+
+        guard #available(macOS 26.0, *) else { return fallback }
+        guard case .available = SystemLanguageModel.default.availability else { return fallback }
+
+        do {
+            let session = LanguageModelSession(instructions: Self.postcardInstructions)
+            let response = try await session.respond(to: Self.postcardPrompt(facts))
+            let text = response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.isEmpty ? fallback : text
+        } catch {
+            return fallback
+        }
+    }
+
+    static func postcardFallback(_ facts: PostcardFacts) -> String {
+        let nights = facts.days == 1 ? "A day" : "\(facts.days) days"
+        return "Dear me — \(nights) in \(facts.place), \(facts.monthYear). \(facts.photoCount) photographs; clearly I didn't want to forget it."
+    }
+
+    private static let postcardInstructions = """
+    Write a short postcard (2–4 sentences), first person, addressed "Dear me,". \
+    Warm and reflective, like a note to your future self.
+
+    HARD RULE: you may reference ONLY these facts — the place name, the month and \
+    year, how many days, and how many photos. You must NOT invent or imply \
+    anything else: no scenery, weather, food, activities, feelings about the \
+    place, or people. You have not seen the photos. If you have nothing specific \
+    to say, reflect on the trip's length or how many photos were taken. Output \
+    only the postcard text — no signature, no hashtags.
+    """
+
+    private static func postcardPrompt(_ facts: PostcardFacts) -> String {
+        """
+        Facts (use only these):
+        - Place: \(facts.place)
+        - When: \(facts.monthYear)
+        - Length: \(facts.days) day(s)
+        - Photos taken: \(facts.photoCount)
+
+        Write the postcard.
+        """
     }
 }
 
