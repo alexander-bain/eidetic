@@ -37,13 +37,16 @@ images, which is cheaper **and** more private.
 
 | Tier | Where | What | Status |
 |------|-------|------|--------|
-| 0 | On-device | Dominant color (CIAreaAverage) | ✅ Done |
-| 1 | On-device (Vision) | Aesthetics + utility/junk detection, attention saliency; *planned:* face/pet clustering, `featurePrint` embeddings, OCR | ✅ Partial |
-| 2 | OpenAI (opt-in, once/photo, cached) | Rich caption + mood/activity/composition tags; caption embeddings for concept search | ⏳ Planned |
-| 3 | OpenAI (on-demand, text-only, cheap) | **The Curator** — plans daily themed sessions and writes placards from cached tags + live context | ⏳ Planned |
+| **Curation** | On-device (**free**) | **Favorites** (`PHAsset.isFavorite`) as the backbone, refined by Vision junk-filtering + aesthetics + saliency | ✅ Done |
+| 1 | On-device Vision (**free**) | Aesthetics, utility/junk, attention saliency; *planned:* face/pet clustering, `featurePrint` embeddings, OCR | ✅ Partial |
+| 3 | On-device **Foundation Models** (**free**, macOS/iOS 26) | **The Curator** — plans daily themed sessions and writes placards from cached metadata + live context, fully on-device | ⏳ Next |
+| 2 | OpenAI (**optional**, opt-in, once/photo, cached) | Rich free-form captions + abstract mood from pixels → concept search & mood modes. The one job on-device can't (yet) do as well | ⏳ Optional |
 
-Because Tiers 0–2 are cached to disk, **most playback runs with zero live API
-calls.** Tier 3 sends text, not images.
+**Free-first.** Curation, the Curator's reasoning, and its writing all run free and
+private on-device (favorites + Vision + Apple Foundation Models). OpenAI is an
+*optional premium upgrade* for rich pixel-level captioning — a one-time ~$15–40
+over a 12k-favorite library, cached forever — and even that has a free local path
+(a small VLM via MLX). Most playback runs with zero network calls.
 
 ## What this unlocks
 
@@ -72,9 +75,11 @@ calls.** Tier 3 sends text, not images.
 
 ## Build order
 
-1. **On-device quality + saliency** ✅ — junk filtering, aesthetic ranking,
-   saliency-aware Ken Burns. Free, private, immediate. (Done.)
-2. **OpenAI semantic cache** — background caption/tag enrichment of frame-worthy
-   photos, cached, with caption embeddings.
-3. **The Curator** — daily AI-planned themed sessions with placards.
+1. **Favorites-first curation + on-device quality/saliency** ✅ — favorites as
+   the backbone, junk filtering, saliency-aware Ken Burns. Free, private. (Done.)
+2. **The Curator on Apple Foundation Models** — daily AI-planned themed sessions
+   with generative placards, fully on-device and free.
+3. *(Optional)* **OpenAI / local-VLM caption layer** — rich pixel-level captions
+   + mood for concept search, behind an opt-in. Evaluate only if the free
+   on-device understanding proves too thin.
 4. Concept/mood modes and narrative diptychs on top of the semantic index.

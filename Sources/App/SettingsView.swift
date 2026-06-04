@@ -16,12 +16,13 @@ struct SettingsView: View {
 
             Section("Behavior") {
                 Toggle("Keep display awake", isOn: $coordinator.stayAwake)
+                Toggle("Show favorites only", isOn: $photoProvider.favoritesOnly)
             }
 
             Section("Library") {
                 LabeledContent("Photos loaded", value: "\(photoProvider.photos.count)")
-                LabeledContent("Frame-worthy", value: "\(photoProvider.displayablePhotos.count)")
-                LabeledContent("Hidden (screenshots, docs)", value: "\(photoProvider.hiddenUtilityCount)")
+                LabeledContent("Favorites", value: "\(photoProvider.favoritesCount)")
+                LabeledContent("Now showing", value: "\(photoProvider.curatedPhotos.count)")
                 LabeledContent("On this day", value: "\(photoProvider.photosForToday().count)")
             }
 

@@ -23,7 +23,7 @@
 | Depth Data | AVDepthData from Portrait Mode photos (planned) |
 | Weather | WeatherKit (planned, for Weather Match mode) |
 | Sleep Prevention | ProcessInfo.beginActivity (macOS) / isIdleTimerDisabled (iOS) |
-| Minimum Target | macOS 14.0 (Sonoma), iOS 17.0, tvOS 17.0 |
+| Minimum Target | Latest OS only — macOS 15.0+, iOS 18.0+, tvOS 18.0+ (single user; no legacy support) |
 
 No external dependencies. Apple frameworks only.
 
@@ -155,9 +155,11 @@ ContentView (switches between mode views with crossfade transitions)
 
 **Architecture note (Phase 1):** Display images load on demand via `PhotoProvider.requestImage(_:)` with a 400-image LRU cap, so memory stays flat regardless of library size. `AnalyzedPhoto` is a reference type (`ObservableObject`) so on-demand image loads update views in place.
 
-**Photo Intelligence (on-device).** During the background pass, each photo gets one ~512px thumbnail through three analyzers in `PhotoProvider.analyzeAsset`: dominant color (CIAreaAverage), aesthetics + utility detection (`VNCalculateImageAestheticsScoresRequest`, macOS 15+), and subject saliency (`VNGenerateAttentionBasedSaliencyImageRequest`). Results are cached to `~/Library/Application Support/Eidetic/analysis-cache.json`. Effects:
-- **Junk filtering** — screenshots (`PHAsset.mediaSubtypes.photoScreenshot`) + utility images (receipts/docs) are excluded via `displayablePhotos`; all modes select from it.
-- **Aesthetic ranking** — `randomPhotos` biases hero modes toward frame-worthy shots.
+**Curation signal: favorites first.** The primary curation input is the user's own `PHAsset.isFavorite` flag — an explicit human judgment that beats any ML guess. `PhotoProvider.curatedPhotos` is what every mode draws from: when `favoritesOnly` is true (default), it's the favorites; otherwise it's favorites + junk-filtered non-favorites. Favorites are trusted absolutely (never junk-filtered). Toggle in Settings, persisted to UserDefaults.
+
+**Photo Intelligence (on-device).** During the background pass, each photo gets one ~512px thumbnail through three analyzers in `PhotoProvider.analyzeAsset`: dominant color (CIAreaAverage), aesthetics + utility detection (`VNCalculateImageAestheticsScoresRequest`), and subject saliency (`VNGenerateAttentionBasedSaliencyImageRequest`). Results are cached to `~/Library/Application Support/Eidetic/analysis-cache.json`. These are *soft hints* for the non-favorite pool:
+- **Junk filtering** — screenshots (`PHAsset.mediaSubtypes.photoScreenshot`) + utility images (receipts/docs) are excluded from non-favorites.
+- **Aesthetic ranking** — `randomPhotos` weights non-favorites by score.
 - **Saliency-aware Ken Burns** — `AnalyzedPhoto.subjectAnchor` focuses the Magazine hero zoom on the subject.
 
 See [`docs/vision.md`](docs/vision.md) for the product thesis and the planned OpenAI content-understanding layer.

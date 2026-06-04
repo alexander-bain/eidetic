@@ -14,8 +14,12 @@ final class AnalyzedPhoto: ObservableObject, Identifiable {
     let saturation: CGFloat
     let brightness: CGFloat
 
-    // On-device Vision analysis (see PhotoProvider).
-    let isUtility: Bool          // screenshot / receipt / document — hidden from display
+    // Explicit human signal — the strongest curation input we have.
+    let isFavorite: Bool
+
+    // On-device Vision analysis (see PhotoProvider). These are soft hints, only
+    // used to filter/rank the non-favorite pool.
+    let isUtility: Bool          // screenshot / receipt / document
     let aestheticsScore: Float   // Vision overall score, -1...1 (0 = unknown)
     let saliencyRect: CGRect?    // subject region, normalized, Vision (bottom-left) origin
 
@@ -32,6 +36,7 @@ final class AnalyzedPhoto: ObservableObject, Identifiable {
         hue: CGFloat,
         saturation: CGFloat,
         brightness: CGFloat,
+        isFavorite: Bool = false,
         isUtility: Bool = false,
         aestheticsScore: Float = 0,
         saliencyRect: CGRect? = nil,
@@ -45,6 +50,7 @@ final class AnalyzedPhoto: ObservableObject, Identifiable {
         self.hue = hue
         self.saturation = saturation
         self.brightness = brightness
+        self.isFavorite = isFavorite
         self.isUtility = isUtility
         self.aestheticsScore = aestheticsScore
         self.saliencyRect = saliencyRect

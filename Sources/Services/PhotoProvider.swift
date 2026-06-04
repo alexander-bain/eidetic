@@ -11,6 +11,13 @@ class PhotoProvider: ObservableObject {
     @Published var authorizationStatus: PHAuthorizationStatus = .notDetermined
     @Published var loadingProgress: Double = 0
 
+    /// When true (default), the wall is drawn only from photos you've favorited
+    /// — your own explicit curation. When false, non-favorites are included too
+    /// (junk-filtered, favorites weighted up).
+    @Published var favoritesOnly: Bool = UserDefaults.standard.object(forKey: "eidetic.favoritesOnly") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(favoritesOnly, forKey: "eidetic.favoritesOnly") }
+    }
+
     private let imageManager = PHCachingImageManager()
     private let ciContext = CIContext()
 
@@ -121,6 +128,7 @@ class PhotoProvider: ObservableObject {
             hue: analysis.hue,
             saturation: analysis.saturation,
             brightness: analysis.brightness,
+            isFavorite: asset.isFavorite,
             isUtility: analysis.isUtility || isScreenshot,
             aestheticsScore: Float(analysis.aesthetics),
             saliencyRect: analysis.saliencyRect
@@ -206,9 +214,8 @@ class PhotoProvider: ObservableObject {
     }
 
     /// Returns (overall aesthetics score, isUtility). Utility = screenshot,
-    /// receipt, document, etc. Available on macOS 15+; (0, false) otherwise.
+    /// receipt, document, etc. Used only as a soft hint for non-favorite photos.
     private func analyzeAesthetics(image: CGImage) -> (Double, Bool) {
-        guard #available(macOS 15.0, *) else { return (0, false) }
         let request = VNCalculateImageAestheticsScoresRequest()
         let handler = VNImageRequestHandler(cgImage: image, options: [:])
         do {
@@ -356,13 +363,21 @@ class PhotoProvider: ObservableObject {
 
     // MARK: - Filtered access
 
-    /// Photos worth putting on the wall — screenshots, receipts, and documents
-    /// are filtered out so the display is always frame-worthy.
-    var displayablePhotos: [AnalyzedPhoto] {
-        photos.filter { !$0.isUtility }
+    /// The pool every mode draws from. Favorites are trusted absolutely (never
+    /// junk-filtered). When not favorites-only, non-favorite photos are included
+    /// but screenshots/receipts/documents are filtered out.
+    var curatedPhotos: [AnalyzedPhoto] {
+        if favoritesOnly {
+            let favorites = photos.filter { $0.isFavorite }
+            if !favorites.isEmpty { return favorites }
+            // No favorites yet (e.g., still loading) — show the junk-filtered set.
+            return photos.filter { !$0.isUtility }
+        }
+        return photos.filter { $0.isFavorite || !$0.isUtility }
     }
 
-    var hiddenUtilityCount: Int { photos.count - displayablePhotos.count }
+    var favoritesCount: Int { photos.lazy.filter(\.isFavorite).count }
+    var hiddenUtilityCount: Int { photos.lazy.filter { $0.isUtility && !$0.isFavorite }.count }
 
     func photosForToday(windowDays: Int = 3) -> [(Int, AnalyzedPhoto)] {
         let calendar = Calendar.current
@@ -371,7 +386,7 @@ class PhotoProvider: ObservableObject {
         let day = calendar.component(.day, from: today)
         let currentYear = calendar.component(.year, from: today)
 
-        return displayablePhotos.compactMap { photo in
+        return curatedPhotos.compactMap { photo in
             guard let date = photo.creationDate else { return nil }
             let m = calendar.component(.month, from: date)
             let d = calendar.component(.day, from: date)
@@ -406,7 +421,7 @@ class PhotoProvider: ObservableObject {
     /// Hue-sorted photos, evenly sampled across the spectrum so the Color Sort
     /// strip stays a manageable length even for very large libraries.
     func photosSortedByHue(limit: Int = 200) -> [AnalyzedPhoto] {
-        let sorted = displayablePhotos
+        let sorted = curatedPhotos
             .filter { $0.saturation > 0.12 && $0.brightness > 0.15 }
             .sorted { $0.hue < $1.hue }
 
@@ -415,18 +430,22 @@ class PhotoProvider: ObservableObject {
         return (0..<limit).compactMap { sorted[safe: Int(Double($0) * step)] }
     }
 
-    /// Random photos biased toward higher aesthetics, so hero modes favor your
-    /// frame-worthy shots. On macOS < 15 (no aesthetics) this is a plain shuffle.
+    /// Random photos for hero modes, preferring favorites first, then higher
+    /// aesthetics. (When favorites-only is on, the pool is already all favorites,
+    /// so this just biases by aesthetics within them.)
     func randomPhotos(_ count: Int) -> [AnalyzedPhoto] {
-        let pool = displayablePhotos
+        let pool = curatedPhotos
         guard pool.count > count else { return pool.shuffled() }
 
-        let sorted = pool.sorted { $0.aestheticsScore > $1.aestheticsScore }
+        let sorted = pool.sorted { a, b in
+            if a.isFavorite != b.isFavorite { return a.isFavorite }
+            return a.aestheticsScore > b.aestheticsScore
+        }
         let keepers = sorted.prefix(max(count * 4, pool.count / 2))
         return Array(keepers.shuffled().prefix(count))
     }
 
     func photosByYear() -> [Int: [AnalyzedPhoto]] {
-        Dictionary(grouping: displayablePhotos.filter { $0.year != nil }, by: { $0.year! })
+        Dictionary(grouping: curatedPhotos.filter { $0.year != nil }, by: { $0.year! })
     }
 }

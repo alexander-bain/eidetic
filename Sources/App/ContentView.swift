@@ -36,6 +36,9 @@ struct ContentView: View {
         .onChange(of: coordinator.currentMode) { _, _ in
             refreshSelections()
         }
+        .onChange(of: photoProvider.favoritesOnly) { _, _ in
+            refreshSelections()
+        }
         .onHover { hovering in
             if hovering { showControlsBriefly() }
         }
