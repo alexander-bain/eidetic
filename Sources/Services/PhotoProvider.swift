@@ -460,4 +460,33 @@ class PhotoProvider: ObservableObject {
     func photosByYear() -> [Int: [AnalyzedPhoto]] {
         Dictionary(grouping: curatedPhotos.filter { $0.year != nil }, by: { $0.year! })
     }
+
+    /// Photos from this same week of the year, across every past year, grouped
+    /// and sorted by year — the raw material for Time Machine Radio. Broadens the
+    /// window if this exact week is sparse so the mode always has a story to tell.
+    func thisWeekAcrossYears() -> [(year: Int, photos: [AnalyzedPhoto])] {
+        let calendar = Calendar.current
+        let now = Date()
+        let currentYear = calendar.component(.year, from: now)
+        let todayDayOfYear = calendar.ordinality(of: .day, in: .year, for: now) ?? 0
+
+        func isNearToday(_ date: Date, within days: Int) -> Bool {
+            guard let dayOfYear = calendar.ordinality(of: .day, in: .year, for: date) else { return false }
+            let diff = abs(dayOfYear - todayDayOfYear)
+            return min(diff, 365 - diff) <= days // wrap around the year boundary
+        }
+
+        func grouped(within days: Int) -> [(year: Int, photos: [AnalyzedPhoto])] {
+            let matches = curatedPhotos.filter { photo in
+                guard let date = photo.creationDate else { return false }
+                return calendar.component(.year, from: date) != currentYear && isNearToday(date, within: days)
+            }
+            return Dictionary(grouping: matches) { calendar.component(.year, from: $0.creationDate!) }
+                .map { (year: $0.key, photos: $0.value) }
+                .sorted { $0.year < $1.year }
+        }
+
+        let thisWeek = grouped(within: 3)
+        return thisWeek.count >= 2 ? thisWeek : grouped(within: 15)
+    }
 }

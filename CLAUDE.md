@@ -89,26 +89,34 @@ ContentView (switches between mode views with crossfade transitions)
 
 ## Display Modes Catalog
 
-| # | Mode | Status | Description |
-|---|------|--------|-------------|
-| 1 | Magazine Spread | Built | Editorial layout: metadata panel + hero photo with Ken Burns drift |
-| 2 | Split Timeline | Built | Same day, different years — side-by-side comparison |
-| 3 | Color Sort | Built | Photos sorted by hue, auto-scrolling strip with gradient background |
-| 4 | Polaroid Drop | Planned | Physics-based Polaroids stacking on a surface |
-| 5 | Photo Wall | Planned | Mosaic grid with Ken Burns on each tile |
-| 6 | Kaleidoscope | Planned | Core Image mirror/rotate into kaleidoscope patterns |
-| 7 | Clock Face | Planned | 12 photo segments as clock hours, time-aware |
-| 8 | Puzzle Reveal | Planned | Jigsaw pieces drift into place over 30-60s |
-| 9 | Film Strip | Planned | Sprocket-hole film frames, grain, speed varies by photo density |
-| 10 | Weather Match | Planned | Current weather drives photo selection (rain → rainy photos) |
-| 11 | Sunrise/Sunset | Planned | Real sun position drives tint, speed, and photo mood |
-| 12 | This Week in History | Planned | Photos from this week across all years |
-| 13 | Guess the Year | Planned | Interactive — guess when the photo was taken |
-| 14 | Photo Roulette | Planned | Slot machine spin to a random photo |
-| 15 | Face Clusters | Planned | Vision framework groups by person, themed sessions |
-| 16 | Parallax Layers | Planned | Portrait Mode depth data for 3D parallax effect |
-| 17 | Diptych/Triptych | Planned | 2-3 photos paired by color palette, gallery-style |
-| 18 | Ken Burns Classic | Planned | Simple full-screen with slow drift (standalone mode) |
+The original 18-mode catalog was retired (most re-skinned what Apple's
+screensaver/Memories already do). The new direction is **AI-native modes that
+only make sense in 2026 and reward a deep, richly-tagged library** — see
+[`docs/vision.md`](docs/vision.md) and `docs/roadmap.md`. The three original
+"built" modes (Magazine Spread, Split Timeline, Color Sort) are kept as the
+ambient baseline; everything new is from the reimagined catalog.
+
+| Mode | Status | Substrate | Description |
+|------|--------|-----------|-------------|
+| Magazine Spread | Built | baseline | Editorial hero + saliency-aware Ken Burns |
+| Split Timeline | Built | baseline | Same day, different years |
+| Color Sort | Built | baseline | Hue-sorted scrolling strip |
+| **Time Machine Radio** | **Built** | LLM + dates | This week across all years, narrated by on-device LLM (Curator) |
+| Reverse Postcard | Planned | LLM + geo | The postcard you never sent, written in your voice |
+| The Map Room | Planned | geo | Animated map flying between your photo locations |
+| Same Spot, Different Time | Planned | geo | One GPS place across years, framing-aligned |
+| A Life in Faces | Planned | faces | One person, aging across every photo, morphing |
+| The Cast | Planned | faces | Your social universe as a living credits roll |
+| Thematic Threads | Planned | semantic | A hidden visual thread across the whole library |
+| The Algorithm's Favorite | Planned | semantic | Photos *it* loves that *you* never favorited |
+| Living Portraits | Planned | generative | Depth + motion bring stills to life (was Parallax) |
+| Beyond the Frame | Planned | generative | Outpainting extends each photo into dreamlike motion |
+| The Style Wing | Planned | generative | Each photo re-rendered in a fitting art movement |
+| The Composite | Planned | generative | Many photos fused into one impossible image |
+
+Backlog (needs refinement): The Critic, Mood Ring, Lexicon/Tag Rooms, Together,
+Chrono-Morph, Anniversary Engine (as an ambient layer), Window Rhyme, Tell Me
+About This, Hard Mode Trivia.
 
 ---
 

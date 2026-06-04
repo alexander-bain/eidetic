@@ -77,9 +77,11 @@ over a 12k-favorite library, cached forever — and even that has a free local p
 
 1. **Favorites-first curation + on-device quality/saliency** ✅ — favorites as
    the backbone, junk filtering, saliency-aware Ken Burns. Free, private. (Done.)
-2. **The Curator on Apple Foundation Models** — daily AI-planned themed sessions
-   with generative placards, fully on-device and free.
-3. *(Optional)* **OpenAI / local-VLM caption layer** — rich pixel-level captions
-   + mood for concept search, behind an opt-in. Evaluate only if the free
-   on-device understanding proves too thin.
-4. Concept/mood modes and narrative diptychs on top of the semantic index.
+2. **The Curator on Apple Foundation Models** ✅ — on-device LLM writes gallery
+   placard copy for each segment, free and private, with templated fallback. (Done.)
+3. **AI-native mode catalog** — 12 modes built in waves by shared infrastructure
+   (see `roadmap.md` Phase 2). First shipped: **Time Machine Radio** ✅ (this
+   week across all years, narrated by the on-device LLM via `Curator.memoir`).
+4. *(Optional)* **OpenAI / local-VLM caption layer** — rich pixel-level captions
+   + mood for concept search (powers the Wave 4 semantic modes), behind an
+   opt-in. Evaluate only if free on-device understanding proves too thin.

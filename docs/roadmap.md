@@ -46,32 +46,40 @@ incrementally alongside the phases below.
 
 ---
 
-## Phase 2: More Modes
+## Phase 2: AI-Native Modes
 
-Build out the full 18-mode catalog. Each mode is a self-contained SwiftUI View conforming to the same pattern.
+The original 18-mode catalog was **retired** — most of it re-skinned what Apple
+already does well. The new catalog (chosen via the review in
+`docs/vision.md`) is 12 modes that only make sense in 2026 and reward a deep,
+richly-tagged library. Built in **waves by shared infrastructure**, cheapest
+first, so each wave reuses the last.
 
-### Tier A — Visual showcase (build first)
-- [ ] **Ken Burns Classic** — Simple full-screen photo with slow drift. The baseline. No metadata overlay, just the photo.
-- [ ] **Polaroid Drop** — Photos appear as Polaroid-framed cards that drop onto a surface with physics (SpriteKit or manual spring animation). Old ones fade. Slight random rotation on each.
-- [ ] **Photo Wall** — Grid of thumbnails filling the screen. Each tile has subtle Ken Burns. One tile slowly enlarges to highlight, then shrinks back. Grid reshuffles every few minutes.
-- [ ] **Film Strip** — Vertical sprocket-holed film frames scrolling upward. CIFilter grain/flicker overlay. Scroll speed inversely proportional to photo density (fast-forward through boring months, slow on trips).
+### Wave 1 — LLM + existing metadata (reuses Curator + PhotoProvider)
+- [x] **Time Machine Radio** — this week across all years, narrated as a memoir by the on-device LLM (Apple Foundation Models). *First build — done.*
+- [ ] **Reverse Postcard** — picks a trip, writes (in your voice) the postcard you never sent.
 
-### Tier B — Data-driven (use metadata)
-- [ ] **Clock Face** — Screen divided into 12 hour segments, each containing a photo. As the real clock advances, the current hour's photo fades to full screen briefly. Functional ambient clock.
-- [ ] **This Week in History** — Horizontal filmstrip of all photos from this calendar week across every year. Year labels above each cluster. Auto-scrolls slowly.
-- [ ] **Diptych/Triptych** — Pairs or triples of photos matched by dominant color palette, displayed gallery-style with even white borders.
-- [ ] **Weather Match** — Pulls current weather via WeatherKit. Selects photos matching the vibe: rain → moody/gray photos, sun → bright/saturated, snow → white/blue. Requires location permission.
+### Wave 2 — Geo (MapKit + reverse geocoding)
+- [ ] **The Map Room** — animated map flying between your photo locations, blooming memories at each pin.
+- [ ] **Same Spot, Different Time** — one GPS place across years, auto-aligned to matching framing.
 
-### Tier C — Ambient/generative (visual effects)
-- [ ] **Kaleidoscope** — Takes a photo, applies CIKaleidoscope filter with slow rotation. Morphs parameters as it transitions to next photo.
-- [ ] **Puzzle Reveal** — Photo broken into ~20 jigsaw-like pieces scattered around the screen. Over 30-60s, pieces drift into place. Hold complete image for 5s, then scatter and reform as next photo.
-- [ ] **Parallax Layers** — Uses Portrait Mode depth map to separate foreground/background. Applies subtle parallax drift as if the photo has physical depth. Falls back to faked split on non-portrait photos.
-- [ ] **Sunrise/Sunset Cycle** — Photos tinted to match real sun position (warm golden hour, cool blue night). Transition speed matches time of day — slow and contemplative at dusk, brighter and faster at noon.
+### Wave 3 — Face clustering (Vision faceprints + naming UI)
+- [ ] **A Life in Faces** — one person, aging across every photo, date-ordered and morphing.
+- [ ] **The Cast** — your social universe as a living credits roll (central / new / drifted-from).
 
-### Tier D — Interactive (idle → auto, active → play)
-- [ ] **Guess the Year** — Shows photo with date hidden. Four year buttons. Auto-reveals after 10s if no input. Idle mode auto-cycles.
-- [ ] **Photo Roulette** — Slot-machine rapid scroll, decelerates to stop on random photo. Auto-spins every 2 minutes in idle mode.
-- [ ] **Face Cluster Shuffle** — Groups photos by detected faces (Vision framework). Dedicates time to each person with a subtle "The [Name] Collection" label. Tap/click face bubbles to jump between people.
+### Wave 4 — Semantic substrate (captions/tags + embeddings; opt-in cloud/local-VLM)
+- [ ] **Thematic Threads** — a hidden visual motif across the whole library, as a wandering essay.
+- [ ] **The Algorithm's Favorite** — photos *it* finds striking that *you* never favorited, argued.
+
+### Wave 5 — Generative imaging (on-device diffusion / depth / Image Playground / MLX)
+- [ ] **Living Portraits** — depth + motion bring stills to life (the surviving Parallax idea). *Start here — cheapest of the wave.*
+- [ ] **Beyond the Frame** — outpainting extends each photo past its edges into dreamlike motion.
+- [ ] **The Style Wing** — each photo re-rendered in an art movement the AI judges fits it.
+- [ ] **The Composite** — many photos fused into one impossible image.
+
+### Backlog (needs refinement before building)
+The Critic · Mood Ring · Lexicon (Tag Rooms) · Together · Chrono-Morph ·
+Anniversary Engine (build as an *ambient layer*, not a mode) · Window Rhyme ·
+Tell Me About This · Hard Mode Trivia.
 
 ---
 

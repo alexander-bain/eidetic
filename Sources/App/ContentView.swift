@@ -13,6 +13,8 @@ struct ContentView: View {
     @State private var magazineSelection: [AnalyzedPhoto] = []
     @State private var colorSelection: [AnalyzedPhoto] = []
     @State private var timelineSelection: [(Int, AnalyzedPhoto)] = []
+    @State private var timeMachineChapters: [TimeMachineChapter] = []
+    @State private var timeMachineTask: Task<Void, Never>?
 
     // The curator writes a gallery placard for each segment.
     private let curator = Curator()
@@ -40,6 +42,7 @@ struct ContentView: View {
             controlsTimer?.invalidate()
             controlsTimer = nil
             placardTask?.cancel()
+            timeMachineTask?.cancel()
         }
         .onChange(of: coordinator.currentMode) { _, _ in
             refreshSelections()
@@ -76,6 +79,9 @@ struct ContentView: View {
                     .transition(.opacity)
             case .colorSort:
                 ColorSortView(photos: colorSelection)
+                    .transition(.opacity)
+            case .timeMachineRadio:
+                TimeMachineRadioView(chapters: timeMachineChapters)
                     .transition(.opacity)
             }
         }
@@ -204,7 +210,41 @@ struct ContentView: View {
         magazineSelection = photoProvider.randomPhotos(24)
         colorSelection = photoProvider.photosSortedByHue()
         timelineSelection = photoProvider.splitTimelinePhotos()
+        refreshTimeMachine()
         refreshPlacard()
+    }
+
+    /// Builds the Time Machine chapters (instant templated narration), then lets
+    /// the on-device curator rewrite the per-year lines in the background.
+    private func refreshTimeMachine() {
+        let entries = photoProvider.thisWeekAcrossYears()
+        let monthFormatter = DateFormatter()
+        monthFormatter.dateFormat = "MMMM"
+
+        let memoirYears: [MemoirYear] = entries.map { entry in
+            let month = entry.photos.first?.creationDate.map(monthFormatter.string) ?? "that week"
+            return MemoirYear(year: entry.year, count: entry.photos.count, monthName: month)
+        }
+        let fallback = Curator.memoirFallback(for: memoirYears)
+
+        timeMachineChapters = entries.map { entry in
+            let representative = entry.photos
+                .sorted { lhs, rhs in
+                    if lhs.isFavorite != rhs.isFavorite { return lhs.isFavorite }
+                    return lhs.aestheticsScore > rhs.aestheticsScore
+                }
+                .first ?? entry.photos[0]
+            return TimeMachineChapter(year: entry.year, photo: representative, line: fallback[entry.year] ?? "")
+        }
+
+        timeMachineTask?.cancel()
+        timeMachineTask = Task {
+            let lines = await curator.memoir(for: memoirYears)
+            if Task.isCancelled { return }
+            timeMachineChapters = timeMachineChapters.map { chapter in
+                TimeMachineChapter(year: chapter.year, photo: chapter.photo, line: lines[chapter.year] ?? chapter.line)
+            }
+        }
     }
 
     /// Shows an instant templated placard, then upgrades to the on-device
@@ -232,6 +272,7 @@ struct ContentView: View {
         case .magazineSpread: photos = magazineSelection
         case .colorSort: photos = colorSelection
         case .splitTimeline: photos = timelineSelection.map(\.1)
+        case .timeMachineRadio: photos = timeMachineChapters.map(\.photo)
         }
 
         let years = Array(Set(photos.compactMap(\.year))).sorted()

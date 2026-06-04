@@ -22,6 +22,9 @@ struct AsyncPhotoImage: View {
                     .fill(Color(nsColor: photo.dominantColor).opacity(0.25))
             }
         }
-        .onAppear { provider.requestImage(for: photo) }
+        // Fires on appear AND whenever the photo changes — so single-image modes
+        // that swap the photo (Magazine hero, Split Timeline, Time Machine) load
+        // each new photo, not just the first.
+        .task(id: photo.id) { provider.requestImage(for: photo) }
     }
 }
