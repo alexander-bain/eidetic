@@ -484,6 +484,18 @@ class PhotoProvider: ObservableObject {
         Dictionary(grouping: curatedPhotos.filter { $0.year != nil }, by: { $0.year! })
     }
 
+    /// Located photos for The Map Room, in chronological order so the camera
+    /// flies through your travels over time. Sampled to a session length.
+    func locatedPhotos(limit: Int = 50) -> [AnalyzedPhoto] {
+        let located = curatedPhotos
+            .filter { $0.location != nil }
+            .sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
+        guard located.count > limit else { return located }
+        // Even sample across the timeline so the journey spans all the years.
+        let step = Double(located.count) / Double(limit)
+        return (0..<limit).compactMap { located[safe: Int(Double($0) * step)] }
+    }
+
     /// Photos from this same week of the year, across every past year, grouped
     /// and sorted by year — the raw material for Time Machine Radio. Broadens the
     /// window if this exact week is sparse so the mode always has a story to tell.

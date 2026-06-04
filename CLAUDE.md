@@ -102,8 +102,8 @@ ambient baseline; everything new is from the reimagined catalog.
 | Split Timeline | Built | baseline | Same day, different years |
 | Color Sort | Built | baseline | Hue-sorted scrolling strip |
 | **Time Machine Radio** | **Built** | LLM + dates | This week across all years, narrated by on-device LLM (Curator) |
-| Reverse Postcard | Planned | LLM + geo | The postcard you never sent, written in your voice |
-| The Map Room | Planned | geo | Animated map flying between your photo locations |
+| **The Map Room** | **Built** | geo | Map flying between your photo locations (photo + date + geocoded place name) |
+| Reverse Postcard | Planned (needs grounding) | LLM + geo | The postcard you never sent — deferred until grounded to avoid hallucination |
 | Same Spot, Different Time | Planned | geo | One GPS place across years, framing-aligned |
 | A Life in Faces | Planned | faces | One person, aging across every photo, morphing |
 | The Cast | Planned | faces | Your social universe as a living credits roll |

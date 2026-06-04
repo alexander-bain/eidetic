@@ -59,7 +59,8 @@ first, so each wave reuses the last.
 - [ ] **Reverse Postcard** — picks a trip, writes (in your voice) the postcard you never sent.
 
 ### Wave 2 — Geo (MapKit + reverse geocoding)
-- [ ] **The Map Room** — animated map flying between your photo locations, blooming memories at each pin.
+- [x] **Reverse-geocoding grounding layer** (`Geocoder`) — coordinates → real place names, cached; reused by all geo modes. *Done.*
+- [x] **The Map Room** — animated map flying between your photo locations, blooming each memory (photo + date + geocoded place name). *Done.*
 - [ ] **Same Spot, Different Time** — one GPS place across years, auto-aligned to matching framing.
 
 ### Wave 3 — Face clustering (Vision faceprints + naming UI)

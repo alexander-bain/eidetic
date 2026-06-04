@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 
 struct ContentView: View {
     @EnvironmentObject var photoProvider: PhotoProvider
@@ -14,10 +15,12 @@ struct ContentView: View {
     @State private var colorSelection: [AnalyzedPhoto] = []
     @State private var timelineSelection: [(Int, AnalyzedPhoto)] = []
     @State private var timeMachineChapters: [TimeMachineChapter] = []
+    @State private var mapStops: [MapStop] = []
 
     // The curator writes a gallery placard for each segment.
     private let curator = Curator()
     @State private var placard: CuratedPlacard?
+    @State private var placardReady = false
     @State private var showPlacard = false
     @State private var placardTask: Task<Void, Never>?
 
@@ -81,6 +84,9 @@ struct ContentView: View {
             case .timeMachineRadio:
                 TimeMachineRadioView(chapters: timeMachineChapters)
                     .transition(.opacity)
+            case .mapRoom:
+                MapRoomView(stops: mapStops)
+                    .transition(.opacity)
             }
         }
         .opacity(coordinator.isTransitioning ? 0 : 1)
@@ -90,7 +96,7 @@ struct ContentView: View {
     @ViewBuilder
     private var placardOverlay: some View {
         VStack(spacing: 10) {
-            if let placard {
+            if placardReady, let placard {
                 Text(placard.title)
                     .font(.system(size: 36, weight: .ultraLight, design: .serif))
                     .foregroundColor(.white.opacity(0.95))
@@ -100,6 +106,11 @@ struct ContentView: View {
                         .tracking(4)
                         .foregroundColor(.white.opacity(0.55))
                 }
+            } else {
+                // Don't show copy we know isn't ready — show progress instead.
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(.white.opacity(0.5))
             }
         }
         .shadow(color: .black.opacity(0.5), radius: 12, y: 2)
@@ -204,11 +215,22 @@ struct ContentView: View {
         }
     }
 
+    private static let mapDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter
+    }()
+
     private func refreshSelections() {
         magazineSelection = photoProvider.randomPhotos(24)
         colorSelection = photoProvider.photosSortedByHue()
         timelineSelection = photoProvider.splitTimelinePhotos()
         refreshTimeMachine()
+        mapStops = photoProvider.locatedPhotos().compactMap { photo in
+            guard let location = photo.location else { return nil }
+            let dateString = photo.creationDate.map(Self.mapDateFormatter.string) ?? ""
+            return MapStop(photo: photo, coordinate: location.coordinate, dateString: dateString)
+        }
         refreshPlacard()
     }
 
@@ -237,18 +259,19 @@ struct ContentView: View {
         }
     }
 
-    /// Shows an instant templated placard, then upgrades to the on-device
-    /// curator's wording when it's ready, then fades the placard out.
+    /// Shows a progress indicator until the curator's (grounded) copy is ready,
+    /// then reveals it — never flashing copy we know isn't good — and fades out.
     private func refreshPlacard() {
         let context = currentContext()
-        placard = Curator.fallback(for: context)
-        withAnimation(.easeInOut(duration: 1.2)) { showPlacard = true }
+        placardReady = false
+        withAnimation(.easeInOut(duration: 0.5)) { showPlacard = true }
 
         placardTask?.cancel()
         placardTask = Task {
-            if let generated = await curator.generatedPlacard(for: context), !Task.isCancelled {
-                withAnimation(.easeInOut(duration: 0.8)) { placard = generated }
-            }
+            let copy = await curator.placard(for: context)
+            if Task.isCancelled { return }
+            placard = copy
+            withAnimation(.easeInOut(duration: 0.8)) { placardReady = true }
             try? await Task.sleep(for: .seconds(8))
             if !Task.isCancelled {
                 withAnimation(.easeInOut(duration: 1.2)) { showPlacard = false }
@@ -263,6 +286,7 @@ struct ContentView: View {
         case .colorSort: photos = colorSelection
         case .splitTimeline: photos = timelineSelection.map(\.1)
         case .timeMachineRadio: photos = timeMachineChapters.map(\.photo)
+        case .mapRoom: photos = mapStops.map(\.photo)
         }
 
         let years = Array(Set(photos.compactMap(\.year))).sorted()

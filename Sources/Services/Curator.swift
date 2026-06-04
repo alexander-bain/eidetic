@@ -49,10 +49,21 @@ final class Curator {
 
         case .timeMachineRadio:
             return CuratedPlacard(title: "Time Machine", subtitle: "this week, across the years")
+
+        case .mapRoom:
+            return CuratedPlacard(title: "The Map Room", subtitle: "everywhere you've been")
         }
     }
 
+    /// The placard copy to show for a segment. Grounded/factual only for now —
+    /// we do NOT surface ungrounded evocative LLM copy (see the grounding rule in
+    /// docs/vision.md). `generatedPlacard` returns to use once it can be grounded.
+    func placard(for context: SegmentContext) async -> CuratedPlacard {
+        Self.fallback(for: context)
+    }
+
     /// On-device LLM copy, or nil if Foundation Models isn't available/usable.
+    /// Currently unused — held for when we can ground it in real content.
     func generatedPlacard(for context: SegmentContext) async -> CuratedPlacard? {
         guard #available(macOS 26.0, *) else { return nil }
 
@@ -104,6 +115,7 @@ final class Curator {
         case .splitTimeline: return "two photos side by side from different years"
         case .colorSort: return "a flowing strip of photos arranged by color"
         case .timeMachineRadio: return "a narrated memoir of this week across past years"
+        case .mapRoom: return "a map flying between the places these photos were taken"
         }
     }
 
