@@ -11,10 +11,10 @@ class PhotoProvider: ObservableObject {
     @Published var authorizationStatus: PHAuthorizationStatus = .notDetermined
     @Published var loadingProgress: Double = 0
 
-    /// When true (default), the wall is drawn only from photos you've favorited
-    /// — your own explicit curation. When false, non-favorites are included too
-    /// (junk-filtered, favorites weighted up).
-    @Published var favoritesOnly: Bool = UserDefaults.standard.object(forKey: "eidetic.favoritesOnly") as? Bool ?? true {
+    /// When true, the wall is drawn *only* from photos you've favorited. When
+    /// false (default), it's favorites-first blended: favorites dominate, with a
+    /// small rediscovery sprinkle of your strongest non-favorites.
+    @Published var favoritesOnly: Bool = UserDefaults.standard.object(forKey: "eidetic.favoritesOnly") as? Bool ?? false {
         didSet { UserDefaults.standard.set(favoritesOnly, forKey: "eidetic.favoritesOnly") }
     }
 
@@ -363,17 +363,29 @@ class PhotoProvider: ObservableObject {
 
     // MARK: - Filtered access
 
+    /// Roughly how many favorites we show per rediscovery (non-favorite) photo
+    /// in blended mode — so favorites stay clearly dominant.
+    private let blendFavoritesPerOther = 5
+
     /// The pool every mode draws from. Favorites are trusted absolutely (never
-    /// junk-filtered). When not favorites-only, non-favorite photos are included
-    /// but screenshots/receipts/documents are filtered out.
+    /// junk-filtered). In blended mode, a capped set of the strongest
+    /// non-favorites is sprinkled in so favorites still dominate everywhere.
     var curatedPhotos: [AnalyzedPhoto] {
+        let favorites = photos.filter { $0.isFavorite }
+
         if favoritesOnly {
-            let favorites = photos.filter { $0.isFavorite }
-            if !favorites.isEmpty { return favorites }
             // No favorites yet (e.g., still loading) — show the junk-filtered set.
-            return photos.filter { !$0.isUtility }
+            return favorites.isEmpty ? photos.filter { !$0.isUtility } : favorites
         }
-        return photos.filter { $0.isFavorite || !$0.isUtility }
+
+        let others = photos.filter { !$0.isFavorite && !$0.isUtility }
+        guard !favorites.isEmpty else { return others }
+
+        let sprinkleCount = min(others.count, max(8, favorites.count / blendFavoritesPerOther))
+        let sprinkle = others
+            .sorted { $0.aestheticsScore > $1.aestheticsScore }
+            .prefix(sprinkleCount)
+        return favorites + sprinkle
     }
 
     var favoritesCount: Int { photos.lazy.filter(\.isFavorite).count }

@@ -14,6 +14,12 @@ struct ContentView: View {
     @State private var colorSelection: [AnalyzedPhoto] = []
     @State private var timelineSelection: [(Int, AnalyzedPhoto)] = []
 
+    // The curator writes a gallery placard for each segment.
+    private let curator = Curator()
+    @State private var placard: CuratedPlacard?
+    @State private var showPlacard = false
+    @State private var placardTask: Task<Void, Never>?
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
@@ -24,6 +30,7 @@ struct ContentView: View {
                 onboardingView
             } else if photoProvider.photos.isNotEmpty {
                 cyclerView
+                placardOverlay
                 controlsOverlay
             }
         }
@@ -32,6 +39,7 @@ struct ContentView: View {
         .onDisappear {
             controlsTimer?.invalidate()
             controlsTimer = nil
+            placardTask?.cancel()
         }
         .onChange(of: coordinator.currentMode) { _, _ in
             refreshSelections()
@@ -73,6 +81,29 @@ struct ContentView: View {
         }
         .opacity(coordinator.isTransitioning ? 0 : 1)
         .animation(.easeInOut(duration: 1.5), value: coordinator.currentMode)
+    }
+
+    @ViewBuilder
+    private var placardOverlay: some View {
+        VStack(spacing: 10) {
+            if let placard {
+                Text(placard.title)
+                    .font(.system(size: 36, weight: .ultraLight, design: .serif))
+                    .foregroundColor(.white.opacity(0.95))
+                if !placard.subtitle.isEmpty {
+                    Text(placard.subtitle.uppercased())
+                        .font(.system(size: 12, weight: .semibold))
+                        .tracking(4)
+                        .foregroundColor(.white.opacity(0.55))
+                }
+            }
+        }
+        .shadow(color: .black.opacity(0.5), radius: 12, y: 2)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.top, 64)
+        .opacity(showPlacard ? 1 : 0)
+        .animation(.easeInOut(duration: 1.2), value: showPlacard)
+        .allowsHitTesting(false)
     }
 
     @ViewBuilder
@@ -173,6 +204,57 @@ struct ContentView: View {
         magazineSelection = photoProvider.randomPhotos(24)
         colorSelection = photoProvider.photosSortedByHue()
         timelineSelection = photoProvider.splitTimelinePhotos()
+        refreshPlacard()
+    }
+
+    /// Shows an instant templated placard, then upgrades to the on-device
+    /// curator's wording when it's ready, then fades the placard out.
+    private func refreshPlacard() {
+        let context = currentContext()
+        placard = Curator.fallback(for: context)
+        withAnimation(.easeInOut(duration: 1.2)) { showPlacard = true }
+
+        placardTask?.cancel()
+        placardTask = Task {
+            if let generated = await curator.generatedPlacard(for: context), !Task.isCancelled {
+                withAnimation(.easeInOut(duration: 0.8)) { placard = generated }
+            }
+            try? await Task.sleep(for: .seconds(8))
+            if !Task.isCancelled {
+                withAnimation(.easeInOut(duration: 1.2)) { showPlacard = false }
+            }
+        }
+    }
+
+    private func currentContext() -> SegmentContext {
+        let photos: [AnalyzedPhoto]
+        switch coordinator.currentMode {
+        case .magazineSpread: photos = magazineSelection
+        case .colorSort: photos = colorSelection
+        case .splitTimeline: photos = timelineSelection.map(\.1)
+        }
+
+        let years = Array(Set(photos.compactMap(\.year))).sorted()
+        let calendar = Calendar.current
+        let now = Date()
+        let month = calendar.component(.month, from: now)
+        let day = calendar.component(.day, from: now)
+        let currentYear = calendar.component(.year, from: now)
+        let onThisDay = photos.contains { photo in
+            guard let date = photo.creationDate else { return false }
+            return calendar.component(.month, from: date) == month
+                && abs(calendar.component(.day, from: date) - day) <= 3
+                && calendar.component(.year, from: date) != currentYear
+        }
+        let allFavorites = !photos.isEmpty && photos.allSatisfy(\.isFavorite)
+
+        return SegmentContext(
+            mode: coordinator.currentMode,
+            photoCount: photos.count,
+            years: years,
+            onThisDay: onThisDay,
+            allFavorites: allFavorites
+        )
     }
 
     private func showControlsBriefly() {
